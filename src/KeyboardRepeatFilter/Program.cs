@@ -304,8 +304,8 @@ namespace KeyboardRepeatFilter
             var exitMenuItem = new MenuItem("Exit", OnExit);
             contextMenu.MenuItems.Add(exitMenuItem);
 
-            // Create tray icon
-            _normalIcon = new Icon(Assembly.GetExecutingAssembly().GetManifestResourceStream("KeyboardRepeatFilter.app.ico"));
+            // Create tray icon. Use the stock application icon so builds do not depend on an embedded app.ico.
+            _normalIcon = (Icon)SystemIcons.Application.Clone();
             _warningIcon = BuildWarningIcon(_normalIcon);
 
             _notifyIcon = new NotifyIcon
