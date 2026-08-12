@@ -2,4 +2,7 @@
   <Project Path="src/GameListUpdater/GameListUpdater.csproj" />
   <Project Path="src/KeyboardHeatmap/KeyboardHeatmap.csproj" />
   <Project Path="src/KeyboardRepeatFilter/KeyboardRepeatFilter.csproj" />
+  <Project Path="test/GameListUpdater.Tests/GameListUpdater.Tests.csproj" />
+  <Project Path="test/KeyboardHeatmap.Tests/KeyboardHeatmap.Tests.csproj" />
+  <Project Path="test/KeyboardRepeatFilter.Tests/KeyboardRepeatFilter.Tests.csproj" />
 </Solution>

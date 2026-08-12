@@ -50,6 +50,7 @@ namespace KeyboardRepeatFilter
         private IntPtr _hookId = IntPtr.Zero;
         private int _messageThreadId;
         private Exception _startException;
+        private MouseDebounceFilterCore _core;
 
         public MouseHookFilter(FilterConfig config)
         {
@@ -59,28 +60,7 @@ namespace KeyboardRepeatFilter
         public void Start()
         {
             _thresholdTicks = (long)(Stopwatch.Frequency * _config.MouseMinRepeatIntervalMs / 1000.0);
-
-            Array.Clear(_excluded, 0, _excluded.Length);
-            var unresolved = new List<string>();
-            if (_config.ExcludedMouseButtons != null)
-            {
-                foreach (var token in _config.ExcludedMouseButtons)
-                {
-                    var index = ResolveButton(token);
-                    if (index < 0)
-                    {
-                        unresolved.Add(token);
-                        continue;
-                    }
-
-                    _excluded[index] = true;
-                }
-            }
-
-            if (unresolved.Count > 0)
-            {
-                LogConfigWarning("Unrecognized mouse button name(s) in config (ignored): " + string.Join(", ", unresolved));
-            }
+            _core = new MouseDebounceFilterCore(_config, LogFiltered, LogConfigWarning);
 
             _messageThread = new Thread(MessageThreadMain)
             {
@@ -114,6 +94,8 @@ namespace KeyboardRepeatFilter
                 _messageThread.Join(TimeSpan.FromSeconds(5));
                 _messageThread = null;
             }
+
+            _core = null;
         }
 
         private void MessageThreadMain()
@@ -155,12 +137,10 @@ namespace KeyboardRepeatFilter
             {
                 var message = unchecked((int)wParam.ToInt64());
                 if (TryClassify(message, lParam, out int button, out bool isDown)
-                    && !_excluded[button])
+                    && _core != null
+                    && _core.ShouldFilter(button, isDown))
                 {
-                    if (Handle(button, isDown))
-                    {
-                        return new IntPtr(1);
-                    }
+                    return new IntPtr(1);
                 }
             }
 

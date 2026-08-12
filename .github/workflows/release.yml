@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      SOLUTION: KeyboardRepeatFilter.sln
+      SOLUTION: KeyboardRepeatFilter.slnx
       BUILD_CONFIGURATION: Release
       RELEASE_DIR: releases
       ARTIFACT_DIR: artifacts
@@ -46,9 +46,9 @@ jobs:
       - name: Set up NuGet
         uses: NuGet/setup-nuget@v4
 
-      - name: Restore NuGet packages
+      - name: Restore packages
         shell: pwsh
-        run: nuget restore $env:SOLUTION -NonInteractive
+        run: dotnet restore $env:SOLUTION
 
       - name: Build solution
         shell: pwsh

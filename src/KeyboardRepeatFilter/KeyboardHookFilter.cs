@@ -96,6 +96,7 @@ namespace KeyboardRepeatFilter
         private IntPtr _hookId = IntPtr.Zero;
         private int _messageThreadId;
         private Exception _startException;
+        private KeyboardDebounceFilterCore _core;
 
         public KeyboardHookFilter(FilterConfig config)
         {
@@ -104,95 +105,10 @@ namespace KeyboardRepeatFilter
 
         public void Start()
         {
-            _blockRelease = string.Equals(_config.FilterMode, "BlockRelease", StringComparison.OrdinalIgnoreCase);
-
             _burstBypass = _config.BurstBypass;
             _burstGapTicks = (long)(Stopwatch.Frequency * BurstGapMs / 1000.0);
-            _lastDownTicks = 0;
-            _rapidStreak = 0;
-            _inBurst = false;
-
-            var defaultThresholdTicks = Stopwatch.Frequency * _config.MinRepeatIntervalMs / 1000.0;
-            var defaultThresholdMs = Math.Max(1, (int)Math.Ceiling(_config.MinRepeatIntervalMs));
-            for (var i = 0; i < _thresholdTicksByVk.Length; i++)
-            {
-                _thresholdTicksByVk[i] = defaultThresholdTicks;
-                _thresholdMsByVk[i] = defaultThresholdMs;
-            }
-
-            var unresolved = new List<string>();
-
-            if (_config.PerKeyMinRepeatIntervalMs != null)
-            {
-                foreach (var kvp in _config.PerKeyMinRepeatIntervalMs)
-                {
-                    if (kvp.Value < 0)
-                    {
-                        continue;
-                    }
-
-                    var codes = KeyTokenResolver.Resolve(kvp.Key);
-                    if (codes.Count == 0)
-                    {
-                        unresolved.Add(kvp.Key);
-                        continue;
-                    }
-
-                    foreach (var vk in codes)
-                    {
-                        if (vk >= 0 && vk < _thresholdTicksByVk.Length)
-                        {
-                            _thresholdTicksByVk[vk] = Stopwatch.Frequency * kvp.Value / 1000.0;
-                            _thresholdMsByVk[vk] = Math.Max(1, (int)Math.Ceiling(kvp.Value));
-                        }
-                    }
-                }
-            }
-
-            Array.Clear(_excludedKeys, 0, _excludedKeys.Length);
-
-            // Legacy numeric exclusions.
-            if (_config.ExcludedVkCodes != null)
-            {
-                foreach (var vkCode in _config.ExcludedVkCodes)
-                {
-                    if (vkCode >= 0 && vkCode < _excludedKeys.Length)
-                    {
-                        _excludedKeys[vkCode] = true;
-                    }
-                }
-            }
-
-            // Name- or number-based exclusions.
-            if (_config.ExcludedKeys != null)
-            {
-                foreach (var token in _config.ExcludedKeys)
-                {
-                    var codes = KeyTokenResolver.Resolve(token);
-                    if (codes.Count == 0)
-                    {
-                        unresolved.Add(token);
-                        continue;
-                    }
-
-                    foreach (var vk in codes)
-                    {
-                        if (vk >= 0 && vk < _excludedKeys.Length)
-                        {
-                            _excludedKeys[vk] = true;
-                        }
-                    }
-                }
-            }
-
-            // CapsLock is always excluded, regardless of config, so its toggle
-            // state can never be desynced by a swallowed or deferred event.
-            _excludedKeys[VkCapital] = true;
-
-            if (unresolved.Count > 0)
-            {
-                LogConfigWarning("Unrecognized key name(s) in config (ignored): " + string.Join(", ", unresolved));
-            }
+            _core = new KeyboardDebounceFilterCore(_config, LogFiltered, LogConfigWarning, InjectKeyUp);
+            _blockRelease = _core.IsBlockRelease;
 
             _messageThread = new Thread(MessageThreadMain)
             {
@@ -237,6 +153,9 @@ namespace KeyboardRepeatFilter
                     _pendingUp[i] = false;
                 }
             }
+
+            _core?.Dispose();
+            _core = null;
         }
 
         private void MessageThreadMain()
@@ -280,40 +199,9 @@ namespace KeyboardRepeatFilter
                 var vk = unchecked((int)kb.vkCode);
                 var message = unchecked((int)wParam.ToInt64());
 
-                // Pass through key-ups we re-injected ourselves; never re-filter them.
-                if (kb.dwExtraInfo == InjectedMarker)
+                if (_core != null && _core.ShouldFilter(vk, message, kb.flags, kb.scanCode, kb.dwExtraInfo))
                 {
-                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
-                }
-
-                // Pass through any synthetic keystroke, ours or another process's,
-                // untouched and without feeding it into burst-rate tracking: it is
-                // not hardware, so it can never be hardware chatter.
-                if ((kb.flags & LlkhfInjected) != 0)
-                {
-                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
-                }
-
-                if (vk >= 0 && vk < 256)
-                {
-                    // Track input rate first (across all keys, even excluded ones) so
-                    // the burst decision reflects the real device speed.
-                    if (_burstBypass)
-                    {
-                        UpdateBurstState(message);
-                    }
-
-                    if (!_excludedKeys[vk])
-                    {
-                        bool filter = _blockRelease
-                            ? HandleBlockRelease(vk, message, kb.flags, kb.scanCode)
-                            : HandleBlockRepress(vk, message);
-
-                        if (filter)
-                        {
-                            return new IntPtr(1);
-                        }
-                    }
+                    return new IntPtr(1);
                 }
             }
 

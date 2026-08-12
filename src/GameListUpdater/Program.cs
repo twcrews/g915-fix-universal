@@ -105,7 +105,7 @@ namespace GameListUpdater
 
         // Compare only the executable lines so a changed header count never
         // produces a false "updated" result.
-        private static string NormalizeBody(string content)
+        internal static string NormalizeBody(string content)
         {
             var sb = new StringBuilder();
             foreach (var line in content.Replace("\r", "").Split('\n'))
@@ -134,7 +134,7 @@ namespace GameListUpdater
             }
         }
 
-        private static HashSet<string> ExtractWin32Exes(string json)
+        internal static HashSet<string> ExtractWin32Exes(string json)
         {
             var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var arr = JArray.Parse(json);
