@@ -1,0 +1,141 @@
+name: Build, Test, and Release
+
+on:
+  push:
+    tags:
+      # GitHub Actions tag filters use glob patterns, not regular expressions.
+      # These patterns trigger for bare semver tags (1.2.3, 1.2.3-beta.1)
+      # and the repository's existing v-prefixed convention (v1.2.3).
+      - '[0-9]*.[0-9]*.[0-9]*'
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-release:
+    name: Build, test, and publish release
+    runs-on: windows-latest
+
+    env:
+      SOLUTION: KeyboardRepeatFilter.sln
+      BUILD_CONFIGURATION: Release
+      RELEASE_DIR: releases
+      ARTIFACT_DIR: artifacts
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate version tag
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v?\d+\.\d+\.\d+.*$') {
+            throw "Tag '$tag' is not a supported version tag. Expected x.y.z* or vx.y.z*."
+          }
+
+          "TAG_NAME=$tag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_ZIP=G915-Stutter-Fix-$tag.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Set up NuGet
+        uses: NuGet/setup-nuget@v4
+
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: nuget restore $env:SOLUTION -NonInteractive
+
+      - name: Build solution
+        shell: pwsh
+        run: |
+          msbuild $env:SOLUTION `
+            -m `
+            -p:Configuration=$env:BUILD_CONFIGURATION `
+            '-p:Platform=Any CPU' `
+            -p:RestorePackagesConfig=true `
+            -verbosity:minimal
+
+      - name: Run tests if present
+        shell: pwsh
+        run: |
+          $testAssemblies = Get-ChildItem -Path . -Recurse -Include '*Tests.dll','*Test.dll' |
+            Where-Object {
+              $_.FullName -match '\\bin\\' -and
+              $_.FullName -notmatch '\\obj\\' -and
+              $_.Name -notmatch '^(Microsoft\.TestPlatform|testhost|.*TestAdapter).*\.dll$'
+            } |
+            Select-Object -ExpandProperty FullName
+
+          if (-not $testAssemblies) {
+            Write-Host 'No compiled test assemblies found; skipping test execution.'
+            return
+          }
+
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vstest = & $vswhere -latest -products * -requires Microsoft.VisualStudio.PackageGroup.TestTools.Core -find 'Common7\IDE\Extensions\TestPlatform\vstest.console.exe' | Select-Object -First 1
+          if (-not $vstest) {
+            throw 'vstest.console.exe was not found.'
+          }
+
+          New-Item -ItemType Directory -Force -Path TestResults | Out-Null
+          & $vstest @testAssemblies /Logger:trx /ResultsDirectory:TestResults
+
+      - name: Validate release artifacts
+        shell: pwsh
+        run: |
+          $required = @(
+            'KeyboardRepeatFilter.exe',
+            'KeyboardHeatmap.exe',
+            'GameListUpdater.exe',
+            'Newtonsoft.Json.dll',
+            'config.json',
+            'gaming.json',
+            'WoW.json'
+          )
+
+          foreach ($file in $required) {
+            $path = Join-Path $env:RELEASE_DIR $file
+            if (-not (Test-Path $path -PathType Leaf)) {
+              throw "Required release artifact missing: $path"
+            }
+          }
+
+      - name: Package release artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:ARTIFACT_DIR | Out-Null
+          $zipPath = Join-Path $env:ARTIFACT_DIR $env:RELEASE_ZIP
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path (Join-Path $env:RELEASE_DIR '*') -DestinationPath $zipPath
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ github.ref_name }}-release-artifacts
+          path: |
+            artifacts/*.zip
+            releases/*
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @((Resolve-Path (Join-Path $env:ARTIFACT_DIR $env:RELEASE_ZIP)).Path)
+          $assets += Get-ChildItem -Path $env:RELEASE_DIR -File | Select-Object -ExpandProperty FullName
+
+          gh release view $env:TAG_NAME --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG_NAME @assets --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $env:TAG_NAME @assets `
+              --repo $env:GITHUB_REPOSITORY `
+              --title "G915 Stutter Fix $env:TAG_NAME" `
+              --generate-notes `
+              --verify-tag
+          }
