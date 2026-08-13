@@ -95,10 +95,21 @@ effect.
 
 Which executables count as "a game" comes from **Discord's public detectable-games list**. Choose
 **Check for game list update** to fetch it: a small, network-isolated companion, `GameListUpdater.exe`,
-downloads the list and writes `games.txt` next to the app. The resident tray app itself never makes
-that call, so with the feature off (the default) nothing new touches the network or watches your
-processes. Configure the mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`, and
-`DefaultGameProfile` in `config.json`.
+downloads the list and writes `games.txt` next to the app. The updater uses HTTP cache validators
+when available, so later checks can skip re-downloading unchanged data. The resident tray app itself
+never makes that call, so with the feature off (the default) nothing new touches the network or
+watches your processes. Configure the mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`,
+and `DefaultGameProfile` in `config.json`.
+
+Advanced/manual updater usage:
+
+```text
+GameListUpdater [--os win32|linux|darwin|all] [--output PATH] [--cache PATH|--no-cache]
+                [--timeout SECONDS] [--retries COUNT] [--api-url URL]
+```
+
+The tray integration keeps the historical defaults: `--os win32`, output `games.txt` next to the app,
+and a sidecar HTTP cache file next to that output.
 
 > This feature was contributed by [**@Timmaykc**](https://github.com/Timmaykc). Thank you!
 
