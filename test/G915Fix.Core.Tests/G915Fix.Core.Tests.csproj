@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/G915Fix.Core/G915Fix.Core.csproj" />
+    <ProjectReference Include="../../src/G915Fix.Heatmap/G915Fix.Heatmap.csproj" />
   </ItemGroup>
 </Project>

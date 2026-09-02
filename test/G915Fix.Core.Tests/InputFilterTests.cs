@@ -1,3 +1,4 @@
+using G915Fix.Core.Diagnostics;
 using G915Fix.Core.Input;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -62,6 +63,26 @@ public sealed class InputFilterTests
     }
 
     [TestMethod]
+    public void KeyboardDebounceFilter_RecordsOnlyTheSuppressedBounce()
+    {
+        var sink = new RecordingDiagnosticSink();
+        using var filter = new KeyboardDebounceFilter(
+            new KeyboardDebounceOptions { MinimumRepeatInterval = TimeSpan.FromMilliseconds(28) },
+            new RecordingInjector(),
+            timestampFrequency: 1000,
+            diagnosticSink: sink);
+
+        filter.ShouldSuppress(new KeyboardInputEvent(HidKeyboardUsage.A, KeyboardInputKind.KeyDown, Timestamp: 100));
+        filter.ShouldSuppress(new KeyboardInputEvent(HidKeyboardUsage.A, KeyboardInputKind.KeyUp, Timestamp: 110));
+        filter.ShouldSuppress(new KeyboardInputEvent(HidKeyboardUsage.A, KeyboardInputKind.KeyDown, Timestamp: 120));
+        filter.ShouldSuppress(new KeyboardInputEvent(HidKeyboardUsage.A, KeyboardInputKind.KeyUp, Timestamp: 121));
+
+        Assert.AreEqual(1, sink.Events.Count);
+        Assert.AreEqual(HidKeyboardUsage.A, sink.Events[0].Key);
+        Assert.AreEqual(FilterDiagnosticAction.RepressBlocked, sink.Events[0].Action);
+    }
+
+    [TestMethod]
     public void MouseDebounceFilter_SuppressesRapidSecondPress()
     {
         var filter = new MouseDebounceFilter(
@@ -71,6 +92,13 @@ public sealed class InputFilterTests
         Assert.IsFalse(filter.ShouldSuppress(new MouseInputEvent(MouseButton.Left, MouseInputKind.ButtonDown, 100)));
         Assert.IsFalse(filter.ShouldSuppress(new MouseInputEvent(MouseButton.Left, MouseInputKind.ButtonUp, 110)));
         Assert.IsTrue(filter.ShouldSuppress(new MouseInputEvent(MouseButton.Left, MouseInputKind.ButtonDown, 120)));
+    }
+
+    private sealed class RecordingDiagnosticSink : IFilterDiagnosticSink
+    {
+        public List<FilterDiagnosticEvent> Events { get; } = [];
+
+        public void Record(FilterDiagnosticEvent diagnosticEvent) => Events.Add(diagnosticEvent);
     }
 
     private sealed class RecordingInjector : IKeyboardInputInjector

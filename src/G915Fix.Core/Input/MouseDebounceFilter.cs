@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using G915Fix.Core.Diagnostics;
 
 namespace G915Fix.Core.Input;
 
@@ -13,11 +14,13 @@ public sealed class MouseDebounceFilter : IMouseInputFilter
     private readonly HashSet<MouseButton> _excludedButtons;
     private readonly Func<long> _getTimestamp;
     private readonly long _threshold;
+    private readonly IFilterDiagnosticSink? _diagnosticSink;
 
     public MouseDebounceFilter(
         MouseDebounceOptions options,
         Func<long>? getTimestamp = null,
-        double? timestampFrequency = null)
+        double? timestampFrequency = null,
+        IFilterDiagnosticSink? diagnosticSink = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         if (options.MinimumRepeatInterval < TimeSpan.Zero)
@@ -33,11 +36,13 @@ public sealed class MouseDebounceFilter : IMouseInputFilter
 
         _excludedButtons = new HashSet<MouseButton>(options.ExcludedButtons);
         _getTimestamp = getTimestamp ?? Stopwatch.GetTimestamp;
+        _diagnosticSink = diagnosticSink;
         _threshold = checked((long)Math.Ceiling(options.MinimumRepeatInterval.TotalSeconds * frequency));
     }
 
     public bool ShouldSuppress(MouseInputEvent inputEvent)
     {
+        bool suppress;
         lock (_sync)
         {
             if (_excludedButtons.Contains(inputEvent.Button))
@@ -49,21 +54,47 @@ public sealed class MouseDebounceFilter : IMouseInputFilter
             ButtonState state = GetState(inputEvent.Button);
             if (inputEvent.Kind == MouseInputKind.ButtonDown)
             {
-                if (!state.IsPressed
+                suppress = !state.IsPressed
                     && state.HasLastUpTimestamp
-                    && now - state.LastUpTimestamp < _threshold)
-                {
-                    return true;
-                }
-
-                state.IsPressed = true;
-                return false;
+                    && now - state.LastUpTimestamp < _threshold;
+                state.IsPressed = !suppress;
             }
+            else
+            {
+                state.LastUpTimestamp = now;
+                state.HasLastUpTimestamp = true;
+                state.IsPressed = false;
+                suppress = false;
+            }
+        }
 
-            state.LastUpTimestamp = now;
-            state.HasLastUpTimestamp = true;
-            state.IsPressed = false;
-            return false;
+        if (suppress)
+        {
+            RecordDiagnostic(inputEvent.Button);
+        }
+
+        return suppress;
+    }
+
+    private void RecordDiagnostic(MouseButton button)
+    {
+        if (_diagnosticSink is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _diagnosticSink.Record(new FilterDiagnosticEvent(
+                FilterDiagnosticEvent.CurrentSchemaVersion,
+                DateTimeOffset.UtcNow,
+                FilterDiagnosticEventKind.MouseFiltered,
+                MouseButton: button,
+                Action: FilterDiagnosticAction.MousePressBlocked));
+        }
+        catch
+        {
+            // Diagnostics must never alter filtering behavior.
         }
     }
 

@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/G915Fix.Core/G915Fix.Core.csproj" />
     <Project Path="src/G915Fix.GameListUpdater/G915Fix.GameListUpdater.csproj" />
+    <Project Path="src/G915Fix.Heatmap/G915Fix.Heatmap.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/G915Fix.Core.Tests/G915Fix.Core.Tests.csproj" />

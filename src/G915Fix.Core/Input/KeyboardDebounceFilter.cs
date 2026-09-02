@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using G915Fix.Core.Diagnostics;
 
 namespace G915Fix.Core.Input;
 
@@ -21,6 +22,7 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
     private readonly KeyboardDebounceMode _mode;
     private readonly bool _burstBypass;
     private readonly int _burstMinimumStreak;
+    private readonly IFilterDiagnosticSink? _diagnosticSink;
 
     private long _lastDownTimestamp;
     private int _rapidStreak;
@@ -32,7 +34,8 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
         IKeyboardInputInjector injector,
         IReleaseSchedulerFactory? schedulerFactory = null,
         Func<long>? getTimestamp = null,
-        double? timestampFrequency = null)
+        double? timestampFrequency = null,
+        IFilterDiagnosticSink? diagnosticSink = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(injector);
@@ -51,6 +54,7 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
         _mode = options.Mode;
         _burstBypass = options.EnableBurstBypass;
         _burstMinimumStreak = options.BurstMinimumStreak;
+        _diagnosticSink = diagnosticSink;
         _defaultThreshold = ToTimestampTicks(options.MinimumRepeatInterval, frequency);
         _burstGap = ToTimestampTicks(options.BurstGap, frequency);
         _excludedKeys = new HashSet<HidKeyboardUsage>(options.ExcludedKeys)
@@ -64,6 +68,8 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
 
     public bool ShouldSuppress(KeyboardInputEvent inputEvent)
     {
+        FilterDiagnosticAction? action = null;
+        bool suppress;
         lock (_sync)
         {
             ThrowIfDisposed();
@@ -84,10 +90,13 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
             }
 
             KeyState state = GetState(inputEvent.Key);
-            return _mode == KeyboardDebounceMode.BlockRelease
-                ? HandleBlockRelease(inputEvent.Key, inputEvent.Kind, state)
-                : HandleBlockRepress(inputEvent.Kind, now, state);
+            suppress = _mode == KeyboardDebounceMode.BlockRelease
+                ? HandleBlockRelease(inputEvent.Key, inputEvent.Kind, state, out action)
+                : HandleBlockRepress(inputEvent.Kind, now, state, out action);
         }
+
+        RecordDiagnostic(inputEvent.Key, action);
+        return suppress;
     }
 
     public void Dispose()
@@ -109,8 +118,13 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
         }
     }
 
-    private bool HandleBlockRepress(KeyboardInputKind kind, long now, KeyState state)
+    private bool HandleBlockRepress(
+        KeyboardInputKind kind,
+        long now,
+        KeyState state,
+        out FilterDiagnosticAction? action)
     {
+        action = null;
         if (IsKeyDown(kind))
         {
             if (!state.IsPressed
@@ -119,6 +133,7 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
                 && !_inBurst)
             {
                 state.SwallowNextUp = true;
+                action = FilterDiagnosticAction.RepressBlocked;
                 return true;
             }
 
@@ -139,8 +154,13 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
         return false;
     }
 
-    private bool HandleBlockRelease(HidKeyboardUsage key, KeyboardInputKind kind, KeyState state)
+    private bool HandleBlockRelease(
+        HidKeyboardUsage key,
+        KeyboardInputKind kind,
+        KeyState state,
+        out FilterDiagnosticAction? action)
     {
+        action = null;
         if (_inBurst)
         {
             if (state.PendingUp)
@@ -157,6 +177,7 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
             if (state.PendingUp)
             {
                 CancelPendingUp(state);
+                action = FilterDiagnosticAction.ReleaseHeld;
                 return true;
             }
 
@@ -179,6 +200,28 @@ public sealed class KeyboardDebounceFilter : IKeyboardInputFilter, IDisposable
         long releaseVersion = ++state.ReleaseVersion;
         state.Scheduler.Schedule(key, GetDelay(state.Key), dueKey => OnReleaseDue(dueKey, releaseVersion));
         return true;
+    }
+
+    private void RecordDiagnostic(HidKeyboardUsage key, FilterDiagnosticAction? action)
+    {
+        if (action is null || _diagnosticSink is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _diagnosticSink.Record(new FilterDiagnosticEvent(
+                FilterDiagnosticEvent.CurrentSchemaVersion,
+                DateTimeOffset.UtcNow,
+                FilterDiagnosticEventKind.KeyboardFiltered,
+                Key: key,
+                Action: action));
+        }
+        catch
+        {
+            // Diagnostics must never alter filtering behavior.
+        }
     }
 
     private void CancelPendingUp(KeyState state)
