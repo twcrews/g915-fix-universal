@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/G915Fix.Core/G915Fix.Core.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/G915Fix.Core.Tests/G915Fix.Core.Tests.csproj" />
+  </Folder>
 </Solution>
