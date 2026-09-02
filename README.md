@@ -56,17 +56,16 @@ Activate it from **Tray → Profile → gaming**.
 
 Let a game pick your profile for you. Turn on **Tray → Game profile switching → Auto-switch profiles for games** and the app watches for a running game and temporarily activates a matching profile, reverting to your base profile the moment the game closes. World of Warcraft maps to the **WoW** profile out of the box; every other detected game uses `DefaultGameProfile` (`gaming` by default). You can still pick a profile by hand while a game is running, that manual choice holds until the game closes and is not saved as your startup default. The status line in the submenu shows what is in effect.
 
-Which executables count as "a game" comes from **Discord's public detectable-games list**. Choose **Check for game list update** to fetch it: a small, network-isolated companion, `GameListUpdater.exe`, downloads the list and writes `games.txt` next to the app. The updater uses HTTP cache validators when available, so later checks can skip re-downloading unchanged data. The resident tray app itself never makes that call, so with the feature off (the default) nothing new touches the network or watches your processes. Configure the mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`, and `DefaultGameProfile` in `config.json`.
+Which executables count as "a game" comes from **Discord's public detectable-games list**. The network-isolated `G915Fix.GameListUpdater` companion downloads the list and writes `games.txt`; the resident filter never makes that request itself. The updater uses HTTP cache validators when available, so later checks can skip re-downloading unchanged data. Its default OS filter follows the current host (`win32`, `linux`, or `darwin`), rather than assuming Windows. Configure profile mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`, and `DefaultGameProfile` in `config.json`.
 
 Advanced/manual updater usage:
 
 ```text
-GameListUpdater [--os win32|linux|darwin|all] [--output PATH] [--cache PATH|--no-cache]
-                [--timeout SECONDS] [--retries COUNT] [--api-url URL]
+G915Fix.GameListUpdater [--os win32|linux|darwin|all] [--output PATH] [--cache PATH|--no-cache]
+                        [--timeout SECONDS] [--retries COUNT]
 ```
 
-The tray integration keeps the historical defaults: `--os win32`, output `games.txt` next to the app,
-and a sidecar HTTP cache file next to that output.
+By default it writes `games.txt` next to the companion and a sidecar HTTP cache file next to that output.
 
 ### Friendly, forgiving configuration
 
