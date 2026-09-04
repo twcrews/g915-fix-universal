@@ -1,5 +1,12 @@
 # G915 Cross-platform Fix
 
+> [!IMPORTANT]
+> The cross-platform rewrite is in progress. `G915Fix.Core` now provides the
+> portable configuration, profile, runtime, diagnostic, and filtering contracts;
+> macOS/Linux/Desktop hosts have not been added yet. The Windows-specific app
+> instructions below are historical. See [`docs/CORE.md`](docs/CORE.md) and
+> [`config.template.json`](config.template.json) for the current portable contract.
+
 **A tiny, user-mode keyboard filter that makes a stuttering keyboard feel brand new again.**
 
 Some Logitech G915/G915X units (and other keyboards with the same defect) emit *impossible* HID sequences, phantom key repeats and double-presses that arrive faster than any human could ever type. The result is maddening: `thiss becomess thiis`, a held `Ctrl` that randomly lets go mid-shortcut, a game character that won't keep walking. 
