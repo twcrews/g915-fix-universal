@@ -1,5 +1,11 @@
 # Usage and Configuration
 
+> [!NOTE]
+> The Windows instructions below describe the historical application. The current
+> cross-platform configuration schema is [`config.template.json`](../config.template.json);
+> its portable Core contracts are documented in [Core application boundary](CORE.md).
+> Platform hosts will document their own installation, permissions, and startup flows.
+
 ## What this app does
 
 `G915-Stutter-Fix` runs in user mode and filters invalid keyboard repeat events (for example, impossible rapid duplicate keypresses) before they reach other applications. It can optionally do the same for chattering mouse buttons (see [Mouse-button debouncing](#mouse-button-debouncing)).

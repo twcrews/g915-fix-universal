@@ -38,7 +38,7 @@ public sealed class JsonAppConfigurationStore : IAppConfigurationStore
             AppConfiguration bound = configuration.Get<AppConfiguration>() ?? new AppConfiguration();
             return Task.FromResult(new ConfigurationLoadResult(bound, true));
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or FormatException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or FormatException or InvalidOperationException)
         {
             return Task.FromResult(new ConfigurationLoadResult(new AppConfiguration(), true, exception.Message));
         }

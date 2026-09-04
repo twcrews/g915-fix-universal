@@ -32,7 +32,8 @@ public sealed class KeyboardFilterConfiguration
 {
     public bool Enabled { get; set; } = true;
 
-    public KeyboardDebounceMode Mode { get; set; } = KeyboardDebounceMode.BlockRepress;
+    /// <summary>One of the portable <see cref="KeyboardDebounceMode"/> names.</summary>
+    public string Mode { get; set; } = nameof(KeyboardDebounceMode.BlockRepress);
 
     public double MinimumRepeatIntervalMs { get; set; } = 28;
 

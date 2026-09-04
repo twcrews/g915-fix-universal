@@ -48,6 +48,32 @@ public sealed class ProfileTests
     }
 
     [TestMethod]
+    public async Task ProfileService_FallsBackToBaseWhenSelectedProfileIsInvalid()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var baseProfile = new ProfileDescriptor("config", Path.Combine(directory, "config.json"), true);
+        var store = new JsonProfileStore(directory);
+
+        try
+        {
+            await store.SaveAsync(baseProfile, new AppConfiguration { DefaultProfile = "gaming" });
+            await File.WriteAllTextAsync(Path.Combine(directory, "gaming.json"), "{\"Keyboard\":{\"MinimumRepeatIntervalMs\":\"not-a-number\"}}");
+            var service = new AppProfileService(store, baseProfile);
+
+            ProfileActivationResult result = await service.InitializeAsync();
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual("config", result.ActiveProfile!.Name);
+            StringAssert.Contains(result.Message, "base configuration");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
     public async Task ProfileService_FallsBackToBaseWhenSelectedProfileIsMissing()
     {
         string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

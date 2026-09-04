@@ -54,6 +54,7 @@ public sealed class ConfigurationCompiler
             }
         }
 
+        KeyboardDebounceMode mode = ParseMode(keyboard.Mode, warnings);
         TimeSpan minimumKeyboardInterval = GetDuration(
             keyboard.MinimumRepeatIntervalMs,
             28,
@@ -88,7 +89,7 @@ public sealed class ConfigurationCompiler
         return new ConfigurationCompilationResult(
             new KeyboardDebounceOptions
             {
-                Mode = keyboard.Mode,
+                Mode = mode,
                 MinimumRepeatInterval = minimumKeyboardInterval,
                 EnableBurstBypass = keyboard.BurstBypass,
                 BurstGap = burstGap,
@@ -104,6 +105,18 @@ public sealed class ConfigurationCompiler
             keyboard.Enabled,
             mouse.Enabled,
             warnings);
+    }
+
+    private static KeyboardDebounceMode ParseMode(string? value, ICollection<ConfigurationWarning> warnings)
+    {
+        if (Enum.TryParse(value, ignoreCase: true, out KeyboardDebounceMode mode)
+            && Enum.IsDefined(mode))
+        {
+            return mode;
+        }
+
+        warnings.Add(new ConfigurationWarning("Keyboard.Mode", "The filter mode is not recognized; BlockRepress was used."));
+        return KeyboardDebounceMode.BlockRepress;
     }
 
     private static TimeSpan GetDuration(

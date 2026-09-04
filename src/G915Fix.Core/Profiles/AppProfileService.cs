@@ -41,7 +41,20 @@ public sealed class AppProfileService : IAppProfileService
             _baseConfiguration = await _store.LoadAsync(BaseProfile, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<ProfileDescriptor> profiles = await _store.ListProfilesAsync(cancellationToken).ConfigureAwait(false);
             ProfileDescriptor? selected = FindProfile(profiles, _baseConfiguration.DefaultProfile);
-            return await ActivateLockedAsync(selected ?? BaseProfile, persistAsDefault: false, cancellationToken).ConfigureAwait(false);
+            if (selected is not null)
+            {
+                try
+                {
+                    return await ActivateLockedAsync(selected, persistAsDefault: false, cancellationToken).ConfigureAwait(false);
+                }
+                catch (InvalidDataException exception)
+                {
+                    ProfileActivationResult fallback = await ActivateLockedAsync(BaseProfile, persistAsDefault: false, cancellationToken).ConfigureAwait(false);
+                    return fallback with { Message = $"Profile '{selected.Name}' could not be loaded; the base configuration was used. {exception.Message}" };
+                }
+            }
+
+            return await ActivateLockedAsync(BaseProfile, persistAsDefault: false, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {

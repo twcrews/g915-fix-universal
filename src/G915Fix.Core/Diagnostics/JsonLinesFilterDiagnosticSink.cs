@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Channels;
 
 namespace G915Fix.Core.Diagnostics;
@@ -10,10 +9,7 @@ namespace G915Fix.Core.Diagnostics;
 /// </summary>
 public sealed class JsonLinesFilterDiagnosticSink : IFilterDiagnosticSink, IAsyncDisposable, IDisposable
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly Channel<FilterDiagnosticEvent> _channel;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task _writerTask;
@@ -47,6 +43,12 @@ public sealed class JsonLinesFilterDiagnosticSink : IFilterDiagnosticSink, IAsyn
     {
         if (Volatile.Read(ref _disposed) != 0)
         {
+            return;
+        }
+
+        if (Volatile.Read(ref _error) is not null)
+        {
+            Interlocked.Increment(ref _droppedEvents);
             return;
         }
 

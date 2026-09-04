@@ -42,8 +42,8 @@ public sealed class RuntimeAndDiagnosticsTests
             }
 
             string content = await File.ReadAllTextAsync(path);
-            StringAssert.Contains(content, "KeyboardFiltered");
-            StringAssert.Contains(content, "RepressBlocked");
+            StringAssert.Contains(content, "\"kind\":0");
+            StringAssert.Contains(content, "\"action\":0");
         }
         finally
         {

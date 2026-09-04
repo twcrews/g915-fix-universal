@@ -16,6 +16,7 @@ public sealed class ConfigurationTests
             {
                 ExcludedKeys = ["Ctrl", "not-a-key"],
                 MinimumRepeatIntervalMs = -1,
+                Mode = "not-a-mode",
                 PerKeyMinimumRepeatIntervalMs = new Dictionary<string, double>
                 {
                     ["A"] = 12,
@@ -35,9 +36,10 @@ public sealed class ConfigurationTests
         Assert.IsTrue(result.KeyboardOptions.ExcludedKeys.Contains(HidKeyboardUsage.RightControl));
         Assert.AreEqual(TimeSpan.FromMilliseconds(12), result.KeyboardOptions.PerKeyMinimumRepeatIntervals[HidKeyboardUsage.A]);
         Assert.AreEqual(TimeSpan.FromMilliseconds(28), result.KeyboardOptions.MinimumRepeatInterval);
+        Assert.AreEqual(KeyboardDebounceMode.BlockRepress, result.KeyboardOptions.Mode);
         Assert.IsTrue(result.MouseOptions.ExcludedButtons.Contains(MouseButton.Left));
         Assert.AreEqual(TimeSpan.FromMilliseconds(50), result.MouseOptions.MinimumRepeatInterval);
-        Assert.AreEqual(5, result.Warnings.Count);
+        Assert.AreEqual(6, result.Warnings.Count);
     }
 
     [TestMethod]
