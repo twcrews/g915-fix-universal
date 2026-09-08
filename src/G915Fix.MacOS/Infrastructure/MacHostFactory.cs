@@ -19,18 +19,23 @@ internal static class MacHostFactory
         Directory.CreateDirectory(logDirectory);
 
         string configPath = Path.Combine(configDirectory, "config.json");
-        EnsureBaseConfiguration(configPath, Path.Combine(logDirectory, "filter-diagnostics.jsonl"));
+        string defaultDiagnosticPath = Path.Combine(logDirectory, "filter-diagnostics.jsonl");
+        EnsureBaseConfiguration(configPath, defaultDiagnosticPath);
 
         var profiles = new AppProfileService(
             new JsonProfileStore(configDirectory),
             new ProfileDescriptor("config", configPath, IsDefault: true));
         var permissions = new MacPermissionService();
         var diagnostics = new MacDiagnosticRouter();
-        var runtime = new MacInputFilterRuntime(permissions, diagnostics);
+        var runtime = new MacInputFilterRuntime(permissions, diagnostics, defaultDiagnosticPath);
         string executable = Environment.ProcessPath ?? throw new InvalidOperationException("The host executable path is unavailable.");
         var autostart = new MacAutostartService(executable);
         var updates = new GitHubReleaseUpdateChecker(new HttpClient());
-        var heatmaps = new MacHeatmapReportService(() => profiles.ActiveConfig?.Diagnostics?.LogPath);
+        var heatmaps = new MacHeatmapReportService(() =>
+        {
+            string? path = profiles.ActiveConfig?.Diagnostics?.LogPath;
+            return string.IsNullOrWhiteSpace(path) ? defaultDiagnosticPath : path;
+        });
         var services = new DesktopApplicationServices(runtime, profiles, permissions, autostart, updates, heatmapReports: heatmaps);
         var viewModel = new DesktopMainViewModel(
             services,

@@ -47,13 +47,32 @@ public sealed class MacHeatmapReportServiceTests
     }
 
     [TestMethod]
-    public async Task ExplainsHowToCreateMissingDiagnosticLog()
+    public async Task OpensAnEmptyReportWhenNoDiagnosticLogExists()
     {
-        var service = new MacHeatmapReportService(() => Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jsonl"));
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        string logPath = Path.Combine(directory, "filter-diagnostics.jsonl");
+        string? openedPath = null;
+        try
+        {
+            var service = new MacHeatmapReportService(
+                () => logPath,
+                (path, _) =>
+                {
+                    openedPath = path;
+                    return Task.CompletedTask;
+                });
 
-        var result = await service.GenerateAndOpenAsync();
+            var result = await service.GenerateAndOpenAsync();
 
-        Assert.IsFalse(result.Succeeded);
-        StringAssert.Contains(result.Message, "Enable diagnostics");
+            Assert.IsTrue(result.Succeeded, result.Message);
+            string reportPath = result.ReportPath!;
+            Assert.AreEqual(reportPath, openedPath);
+            StringAssert.Contains(result.Message, "empty heatmap");
+            StringAssert.Contains(await File.ReadAllTextAsync(reportPath), "Filtered events");
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
     }
 }

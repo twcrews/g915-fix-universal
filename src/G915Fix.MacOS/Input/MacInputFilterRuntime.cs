@@ -15,6 +15,7 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
     private readonly InputFilterRuntimeState _state = new();
     private readonly MacNative.EventTapCallback _callback;
     private readonly MacDiagnosticRouter _diagnostics;
+    private readonly string _defaultDiagnosticPath;
     private readonly double _timestampFrequency;
     private IntPtr _tap;
     private IntPtr _runLoop;
@@ -26,10 +27,11 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
     private bool _running;
     private bool _disposed;
 
-    public MacInputFilterRuntime(MacPermissionService permissions, MacDiagnosticRouter diagnostics)
+    public MacInputFilterRuntime(MacPermissionService permissions, MacDiagnosticRouter diagnostics, string defaultDiagnosticPath)
     {
         _permissions = permissions;
         _diagnostics = diagnostics;
+        _defaultDiagnosticPath = Path.GetFullPath(defaultDiagnosticPath ?? throw new ArgumentNullException(nameof(defaultDiagnosticPath)));
         _callback = OnEvent;
         if (MacNative.mach_timebase_info(out MacNative.MachTimebaseInfo timebase) != 0 || timebase.Numer == 0)
         {
@@ -338,7 +340,12 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
 
     private void ReplaceFilters(ConfigurationCompilationResult configuration)
     {
-        _diagnostics.Configure(configuration.Diagnostics);
+        DiagnosticRuntimeOptions? diagnosticOptions = configuration.Diagnostics;
+        if (diagnosticOptions is { Enabled: true } && string.IsNullOrWhiteSpace(diagnosticOptions.LogPath))
+        {
+            diagnosticOptions = new DiagnosticRuntimeOptions(true, _defaultDiagnosticPath);
+        }
+        _diagnostics.Configure(diagnosticOptions);
         KeyboardDebounceFilter? replacementKeyboard = configuration.KeyboardEnabled
             ? new KeyboardDebounceFilter(configuration.KeyboardOptions, this, timestampFrequency: _timestampFrequency, diagnosticSink: _diagnostics)
             : null;

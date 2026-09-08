@@ -54,9 +54,10 @@ menu-bar icon uses `res/app-icon-black.png` in light appearance and
 The app stores `config.json` and JSON profiles in
 `~/Library/Application Support/G915Fix/`, and diagnostic JSON Lines events in
 `~/Library/Logs/G915Fix/filter-diagnostics.jsonl` when diagnostics are enabled.
-After enabling diagnostics, saving, and filtering at least one event, use
-**Open diagnostic heatmap** in the Application section. It generates a
-self-contained HTML file alongside the log and opens it in the default browser.
+Use **Open diagnostic heatmap** in the Application section to generate a
+self-contained HTML file alongside the log and open it in the default browser.
+It opens an empty report when no diagnostics have been recorded yet; enable
+Diagnostics and save before filtering to populate it.
 
 Closing the settings window hides it and leaves the menu-bar app running. Use
 **Quit G915 Fix** from the menu-bar menu to stop the runtime and exit. The

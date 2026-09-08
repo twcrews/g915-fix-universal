@@ -52,6 +52,7 @@
           <TextBlock Text="Application" Classes="section-title" />
           <ToggleSwitch Content="Write diagnostic events" IsChecked="{Binding DiagnosticsEnabled}" />
           <Button Content="Open diagnostic heatmap" Command="{Binding OpenHeatmapCommand}" />
+          <TextBlock Text="{Binding Message}" Classes="status" TextWrapping="Wrap" />
           <ToggleSwitch Content="Check for updates" IsChecked="{Binding CheckForUpdates}" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Button Content="Initialize" Command="{Binding InitializeCommand}" />

@@ -26,38 +26,60 @@ internal sealed class MacHeatmapReportService : IHeatmapReportService
         }
 
         string logPath = Path.GetFullPath(configuredPath);
-        if (!File.Exists(logPath))
-        {
-            return new HeatmapGenerationResult(false, Message: "No diagnostic events have been recorded yet. Enable diagnostics, save, and use the filter before opening a heatmap.");
-        }
-
+        string reportPath = Path.ChangeExtension(logPath, ".html");
+        string temporaryPath = reportPath + ".tmp-" + Guid.NewGuid().ToString("N");
+        bool hasDiagnosticLog = File.Exists(logPath);
         try
         {
-            HeatmapReport report = await HeatmapAnalyzer.AnalyzeAsync(
-                JsonLinesDiagnosticLog.ReadAsync(logPath, cancellationToken),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            string reportPath = Path.ChangeExtension(logPath, ".html");
-            string temporaryPath = reportPath + ".tmp-" + Guid.NewGuid().ToString("N");
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+            HeatmapReport report = hasDiagnosticLog
+                ? await HeatmapAnalyzer.AnalyzeAsync(
+                    JsonLinesDiagnosticLog.ReadAsync(logPath, cancellationToken),
+                    cancellationToken: cancellationToken).ConfigureAwait(false)
+                : HeatmapAnalyzer.Analyze([]);
             await File.WriteAllTextAsync(temporaryPath, HtmlHeatmapRenderer.Render(report), cancellationToken).ConfigureAwait(false);
             File.Move(temporaryPath, reportPath, overwrite: true);
             await _open(reportPath, cancellationToken).ConfigureAwait(false);
-            return new HeatmapGenerationResult(true, reportPath, "Heatmap opened in your default browser.");
+            return new HeatmapGenerationResult(
+                true,
+                reportPath,
+                hasDiagnosticLog
+                    ? "Heatmap opened in your default browser."
+                    : "No diagnostic events have been recorded yet; an empty heatmap was opened.");
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
         {
             return new HeatmapGenerationResult(false, Message: $"Could not generate the heatmap: {exception.Message}");
         }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch
+            {
+                // Temporary cleanup must not hide a report result.
+            }
+        }
     }
 
-    private static Task OpenAsync(string reportPath, CancellationToken cancellationToken)
+    private static async Task OpenAsync(string reportPath, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        Process.Start(new ProcessStartInfo("open")
+        using var process = Process.Start(new ProcessStartInfo("/usr/bin/open")
         {
             UseShellExecute = false,
+            RedirectStandardError = true,
             CreateNoWindow = true,
             ArgumentList = { reportPath }
-        })?.Dispose();
-        return Task.CompletedTask;
+        }) ?? throw new InvalidOperationException("macOS could not start the browser launcher.");
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        if (process.ExitCode != 0)
+        {
+            string error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error)
+                ? "macOS could not open the heatmap in a browser."
+                : error.Trim());
+        }
     }
 }
