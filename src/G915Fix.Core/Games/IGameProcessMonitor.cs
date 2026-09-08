@@ -1,5 +1,3 @@
-using G915Fix.Core.Abstractions;
-
 namespace G915Fix.Core.Games;
 
 public interface IGameProcessMonitor

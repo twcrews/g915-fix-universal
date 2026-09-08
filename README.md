@@ -2,8 +2,9 @@
 
 > [!IMPORTANT]
 > The cross-platform rewrite is in progress. `G915Fix.Core` now provides the
-> portable configuration, profile, runtime, diagnostic, and filtering contracts;
-> macOS/Linux/Desktop hosts have not been added yet. The Windows-specific app
+> portable configuration, profile, runtime, diagnostic, and filtering contracts,
+> plus a shared Avalonia desktop UI library. OS-specific Avalonia hosts and native
+> input backends have not been added yet. The Windows-specific app
 > instructions below are historical. See [`docs/CORE.md`](docs/CORE.md) and
 > [`config.template.json`](config.template.json) for the current portable contract.
 

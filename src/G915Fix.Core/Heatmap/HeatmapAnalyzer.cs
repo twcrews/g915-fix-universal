@@ -1,7 +1,7 @@
 using G915Fix.Core.Diagnostics;
 using G915Fix.Core.Input;
 
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>Streams filter diagnostics into layout-independent heatmap counts.</summary>
 public static class HeatmapAnalyzer

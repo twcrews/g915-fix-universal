@@ -1,4 +1,4 @@
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>Controls which diagnostic events contribute to a report.</summary>
 public sealed class HeatmapReportOptions

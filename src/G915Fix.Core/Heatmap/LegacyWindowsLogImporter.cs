@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using G915Fix.Core.Diagnostics;
 using G915Fix.Core.Input;
 
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>
 /// Imports the former Windows text-log format so historical reports remain

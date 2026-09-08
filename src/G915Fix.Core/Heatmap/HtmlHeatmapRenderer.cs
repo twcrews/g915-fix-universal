@@ -3,7 +3,7 @@ using System.Net;
 using System.Text;
 using G915Fix.Core.Input;
 
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>Renders a self-contained, generic HID keyboard and mouse heatmap.</summary>
 public static class HtmlHeatmapRenderer

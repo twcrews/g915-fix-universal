@@ -1,4 +1,4 @@
-namespace G915Fix.Core.Abstractions;
+namespace G915Fix.Core.Configuration;
 
 public sealed class AppPathsOptions
 {

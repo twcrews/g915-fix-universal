@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using G915Fix.Core.Diagnostics;
 
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>Writes versioned diagnostics as UTF-8 JSON Lines.</summary>
 public sealed class JsonLinesDiagnosticSink : IFilterDiagnosticSink, IDisposable

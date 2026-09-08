@@ -1,7 +1,6 @@
-using G915Fix.Core.Diagnostics;
 using G915Fix.Core.Input;
 
-namespace G915Fix.Heatmap;
+namespace G915Fix.Core.Heatmap;
 
 /// <summary>Aggregated, layout-independent data for a heatmap report.</summary>
 public sealed record HeatmapReport(

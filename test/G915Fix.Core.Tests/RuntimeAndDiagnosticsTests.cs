@@ -1,6 +1,5 @@
 using G915Fix.Core.Diagnostics;
 using G915Fix.Core.Input;
-using G915Fix.Core.Runtime;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace G915Fix.Core.Tests;

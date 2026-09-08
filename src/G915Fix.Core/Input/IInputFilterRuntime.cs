@@ -1,6 +1,6 @@
 using G915Fix.Core.Configuration;
 
-namespace G915Fix.Core.Runtime;
+namespace G915Fix.Core.Input;
 
 /// <summary>
 /// Platform-hosted lifecycle for native input capture. Implementations invoke the

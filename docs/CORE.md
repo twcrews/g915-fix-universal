@@ -12,7 +12,11 @@
 
 ## Runtime and platform services
 
-`IInputFilterRuntime` is the only contract the desktop UI needs to control a native backend. Platform hosts implement it, create their native hooks/event taps, and synchronously invoke the Core debounce filters. Runtime status distinguishes inactive, active, permission-required, unsupported, and faulted states.
+`IInputFilterRuntime` is the primary contract the desktop UI needs to control a native backend. Platform hosts implement it, create their native hooks/event taps, and synchronously invoke the Core debounce filters. Runtime status distinguishes inactive, active, permission-required, unsupported, and faulted states.
+
+## Shared desktop UI
+
+`G915Fix.Desktop` is an Avalonia class library shared by Windows, macOS, and Linux hosts. Hosts supply their platform implementations through `DesktopApplicationServices`, create a `DesktopMainViewModel`, and place `DesktopMainView` in their window. Include `DesktopResources.ThemeUri` in the host application's styles before displaying the view. The library owns only portable presentation and orchestration; it does not create windows, capture input, choose paths, or implement consent flows.
 
 Permissions, autostart, foreground access, and game process monitoring remain platform seams. They must report unavailable or consent-required states accurately.
 

@@ -1,6 +1,6 @@
 using G915Fix.Core.Diagnostics;
+using G915Fix.Core.Heatmap;
 using G915Fix.Core.Input;
-using G915Fix.Heatmap;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace G915Fix.Core.Tests;
