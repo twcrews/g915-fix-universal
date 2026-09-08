@@ -3,6 +3,7 @@ using System.Windows.Input;
 using G915Fix.Core.Autostart;
 using G915Fix.Core.Configuration;
 using G915Fix.Core.Input;
+using G915Fix.Core.Heatmap;
 using G915Fix.Core.Permissions;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
@@ -50,6 +51,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         ToggleAutostartCommand = new AsyncCommand(ToggleAutostartAsync, () => !IsBusy && Autostart?.Status is AutostartStatus.Enabled or AutostartStatus.Disabled);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
         RequestPermissionCommand = new AsyncCommand(RequestSelectedPermissionAsync, () => !IsBusy && SelectedPermission is not null);
+        OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
 
         _services.InputRuntime.StatusChanged += OnRuntimeStatusChanged;
     }
@@ -69,6 +71,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand ToggleAutostartCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
     public ICommand RequestPermissionCommand { get; }
+    public ICommand OpenHeatmapCommand { get; }
 
     public bool IsInitialized
     {
@@ -278,6 +281,20 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
+    public async Task OpenHeatmapAsync()
+    {
+        if (_services.HeatmapReports is null)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            HeatmapGenerationResult result = await _services.HeatmapReports.GenerateAndOpenAsync();
+            Message = result.Message ?? (result.Succeeded ? "Heatmap opened." : "Could not generate the heatmap.");
+        });
+    }
+
     public async Task RequestSelectedPermissionAsync()
     {
         if (SelectedPermission is null)
@@ -403,7 +420,8 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      InitializeCommand, StartCommand, StopCommand, SaveCommand,
-                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, RequestPermissionCommand
+                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, RequestPermissionCommand,
+                     OpenHeatmapCommand
                  })
         {
             if (command is AsyncCommand asyncCommand)

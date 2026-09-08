@@ -30,7 +30,8 @@ internal static class MacHostFactory
         string executable = Environment.ProcessPath ?? throw new InvalidOperationException("The host executable path is unavailable.");
         var autostart = new MacAutostartService(executable);
         var updates = new GitHubReleaseUpdateChecker(new HttpClient());
-        var services = new DesktopApplicationServices(runtime, profiles, permissions, autostart, updates);
+        var heatmaps = new MacHeatmapReportService(() => profiles.ActiveConfig?.Diagnostics?.LogPath);
+        var services = new DesktopApplicationServices(runtime, profiles, permissions, autostart, updates, heatmapReports: heatmaps);
         var viewModel = new DesktopMainViewModel(
             services,
             new DesktopHostOptions(GetVersion(), "G915 Fix"));
