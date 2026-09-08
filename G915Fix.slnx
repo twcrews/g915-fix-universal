@@ -2,8 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/G915Fix.Core/G915Fix.Core.csproj" />
     <Project Path="src/G915Fix.Desktop/G915Fix.Desktop.csproj" />
+    <Project Path="src/G915Fix.MacOS/G915Fix.MacOS.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/G915Fix.Core.Tests/G915Fix.Core.Tests.csproj" />
+    <Project Path="test/G915Fix.MacOS.Tests/G915Fix.MacOS.Tests.csproj" />
   </Folder>
 </Solution>

@@ -3,10 +3,11 @@
 > [!IMPORTANT]
 > The cross-platform rewrite is in progress. `G915Fix.Core` now provides the
 > portable configuration, profile, runtime, diagnostic, and filtering contracts,
-> plus a shared Avalonia desktop UI library. OS-specific Avalonia hosts and native
-> input backends have not been added yet. The Windows-specific app
-> instructions below are historical. See [`docs/CORE.md`](docs/CORE.md) and
-> [`config.template.json`](config.template.json) for the current portable contract.
+> plus a shared Avalonia desktop UI library. The macOS Avalonia host and its
+> CoreGraphics input backend are now available for local testing; Windows and Linux
+> hosts have not been added yet. The Windows-specific app instructions below are
+> historical. See [`docs/CORE.md`](docs/CORE.md), [`docs/MACOS.md`](docs/MACOS.md),
+> and [`config.template.json`](config.template.json) for the current portable contract.
 
 **A tiny, user-mode keyboard filter that makes a stuttering keyboard feel brand new again.**
 
@@ -217,4 +218,5 @@ The **Filter mode**, **Enable mouse click debounce**, and **Disable nag popups**
 - Smoke test checklist: [`docs/SMOKE_TESTS.md`](docs/SMOKE_TESTS.md)
 - Release process: [`docs/RELEASE.md`](docs/RELEASE.md)
 - Config template: [`config.template.json`](config.template.json)
+- macOS build, permissions, and local testing: [`docs/MACOS.md`](docs/MACOS.md)
   

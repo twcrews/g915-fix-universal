@@ -16,7 +16,7 @@
 
 ## Shared desktop UI
 
-`G915Fix.Desktop` is an Avalonia class library shared by Windows, macOS, and Linux hosts. Hosts supply their platform implementations through `DesktopApplicationServices`, create a `DesktopMainViewModel`, and place `DesktopMainView` in their window. Include `DesktopResources.ThemeUri` in the host application's styles before displaying the view. The library owns only portable presentation and orchestration; it does not create windows, capture input, choose paths, or implement consent flows.
+`G915Fix.Desktop` is an Avalonia class library shared by Windows, macOS, and Linux hosts. Hosts supply their platform implementations through `DesktopApplicationServices`, create a `DesktopMainViewModel`, and place `DesktopMainView` in their window. Include `DesktopResources.ThemeUri` in the host application's styles before displaying the view. The library owns only portable presentation and orchestration; it does not create windows, capture input, choose paths, or implement consent flows. `G915Fix.MacOS` is the first host and composes this UI into a resident menu-bar application.
 
 Permissions, autostart, foreground access, and game process monitoring remain platform seams. They must report unavailable or consent-required states accurately.
 
