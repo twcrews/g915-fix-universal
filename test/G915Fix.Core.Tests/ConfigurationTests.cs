@@ -43,6 +43,19 @@ public sealed class ConfigurationTests
     }
 
     [TestMethod]
+    public void Compiler_CarriesPortableDiagnosticRuntimeSettings()
+    {
+        ConfigurationCompilationResult result = new ConfigurationCompiler().Compile(new AppConfiguration
+        {
+            Diagnostics = new DiagnosticsConfiguration { Enabled = true, LogPath = "/tmp/g915fix.jsonl" }
+        });
+
+        Assert.IsNotNull(result.Diagnostics);
+        Assert.IsTrue(result.Diagnostics.Enabled);
+        Assert.AreEqual("/tmp/g915fix.jsonl", result.Diagnostics.LogPath);
+    }
+
+    [TestMethod]
     public async Task JsonStore_BindsAndAtomicallyPersistsConfiguration()
     {
         string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid().ToString("N"));

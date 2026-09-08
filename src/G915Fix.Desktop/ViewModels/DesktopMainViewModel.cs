@@ -23,6 +23,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _synchronizationContext;
     private AppConfiguration _configuration = new();
     private ProfileDescriptor? _selectedProfile;
+    private PermissionRequirement? _selectedPermission;
     private InputFilterRuntimeSnapshot _runtime = InputFilterRuntimeSnapshot.Inactive;
     private AutostartRegistration? _autostart;
     private UpdateCheckResult? _updateResult;
@@ -48,6 +49,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         ActivateProfileCommand = new AsyncCommand(ActivateSelectedProfileAsync, () => !IsBusy && SelectedProfile is not null);
         ToggleAutostartCommand = new AsyncCommand(ToggleAutostartAsync, () => !IsBusy && Autostart?.Status is AutostartStatus.Enabled or AutostartStatus.Disabled);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
+        RequestPermissionCommand = new AsyncCommand(RequestSelectedPermissionAsync, () => !IsBusy && SelectedPermission is not null);
 
         _services.InputRuntime.StatusChanged += OnRuntimeStatusChanged;
     }
@@ -66,6 +68,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand ActivateProfileCommand { get; }
     public ICommand ToggleAutostartCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
+    public ICommand RequestPermissionCommand { get; }
 
     public bool IsInitialized
     {
@@ -102,6 +105,18 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         set
         {
             if (SetProperty(ref _selectedProfile, value))
+            {
+                RefreshCommands();
+            }
+        }
+    }
+
+    public PermissionRequirement? SelectedPermission
+    {
+        get => _selectedPermission;
+        set
+        {
+            if (SetProperty(ref _selectedPermission, value))
             {
                 RefreshCommands();
             }
@@ -263,6 +278,27 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
+    public async Task RequestSelectedPermissionAsync()
+    {
+        if (SelectedPermission is null)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            PermissionRequestResult result = await _services.Permissions.RequestPermissionAsync(SelectedPermission.Id);
+            Message = result.Message ?? "Follow the macOS permission prompt, then initialize or start filtering again.";
+            IReadOnlyList<PermissionRequirement> permissions = await _services.Permissions.GetRequiredPermissionsAsync();
+            Permissions.Clear();
+            foreach (PermissionRequirement permission in permissions)
+            {
+                Permissions.Add(permission);
+            }
+            SelectedPermission = Permissions.FirstOrDefault(permission => permission.Id == SelectedPermission?.Id);
+        });
+    }
+
     public void Dispose() => _services.InputRuntime.StatusChanged -= OnRuntimeStatusChanged;
 
     private async Task RefreshHostStateAsync()
@@ -283,6 +319,8 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         {
             Permissions.Add(permission);
         }
+        SelectedPermission = Permissions.FirstOrDefault(permission => permission.Status != PermissionStatus.Granted)
+            ?? Permissions.FirstOrDefault();
     }
 
     private ConfigurationCompilationResult CompileConfiguration()
@@ -365,7 +403,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      InitializeCommand, StartCommand, StopCommand, SaveCommand,
-                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand
+                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, RequestPermissionCommand
                  })
         {
             if (command is AsyncCommand asyncCommand)

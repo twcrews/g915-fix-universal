@@ -104,7 +104,10 @@ public sealed class ConfigurationCompiler
             },
             keyboard.Enabled,
             mouse.Enabled,
-            warnings);
+            warnings,
+            new DiagnosticRuntimeOptions(
+                configuration.Diagnostics?.Enabled == true,
+                configuration.Diagnostics?.LogPath));
     }
 
     private static KeyboardDebounceMode ParseMode(string? value, ICollection<ConfigurationWarning> warnings)
@@ -159,4 +162,8 @@ public sealed record ConfigurationCompilationResult(
     MouseDebounceOptions MouseOptions,
     bool KeyboardEnabled,
     bool MouseEnabled,
-    IReadOnlyList<ConfigurationWarning> Warnings);
+    IReadOnlyList<ConfigurationWarning> Warnings,
+    DiagnosticRuntimeOptions? Diagnostics = null);
+
+/// <summary>Portable diagnostic settings required by a native input runtime.</summary>
+public sealed record DiagnosticRuntimeOptions(bool Enabled, string? LogPath);

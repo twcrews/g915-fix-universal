@@ -62,13 +62,18 @@
         </StackPanel>
       </Border>
 
-      <ItemsControl ItemsSource="{Binding Permissions}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Border Classes="card"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+      <Border Classes="card">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Permissions" Classes="section-title" />
+          <ComboBox ItemsSource="{Binding Permissions}" SelectedItem="{Binding SelectedPermission}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{Binding SelectedPermission.Message}" TextWrapping="Wrap" />
+          <Button Content="Grant permission / open settings" Command="{Binding RequestPermissionCommand}" />
+        </StackPanel>
+      </Border>
 
       <ItemsControl ItemsSource="{Binding ConfigurationWarnings}">
         <ItemsControl.ItemTemplate>
