@@ -18,6 +18,9 @@ public sealed class DesktopPermissionsViewModel : ObservableObject
 
     public ObservableCollection<PermissionEntryViewModel> Permissions { get; } = [];
 
+    /// <summary>Raised after platform permission state has been rechecked.</summary>
+    public event EventHandler? PermissionsRefreshed;
+
     public string? Message
     {
         get => _message;
@@ -51,6 +54,7 @@ public sealed class DesktopPermissionsViewModel : ObservableObject
             Permissions.Add(entry);
         }
 
+        PermissionsRefreshed?.Invoke(this, EventArgs.Empty);
         return Permissions.Any(permission => permission.NeedsPermission);
     }
 

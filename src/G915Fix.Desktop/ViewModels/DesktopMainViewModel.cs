@@ -5,6 +5,7 @@ using G915Fix.Core.Configuration;
 using G915Fix.Core.Input;
 using G915Fix.Core.Games;
 using G915Fix.Core.Notifications;
+using G915Fix.Core.Permissions;
 using G915Fix.Core.Heatmap;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
@@ -36,6 +37,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private string? _message;
     private bool _isInitialized;
     private bool _isBusy;
+    private bool _canToggleInputFiltering;
 
     public DesktopMainViewModel(
         DesktopApplicationServices services,
@@ -149,16 +151,45 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Whether every platform permission needed to filter input is currently granted.</summary>
+    public bool CanToggleInputFiltering
+    {
+        get => _canToggleInputFiltering;
+        private set => SetProperty(ref _canToggleInputFiltering, value);
+    }
+
     public bool KeyboardEnabled
     {
         get => _configuration.Keyboard.Enabled;
-        set { _configuration.Keyboard.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
+        set
+        {
+            if (!CanToggleInputFiltering && value)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _configuration.Keyboard.Enabled = value;
+            OnPropertyChanged();
+            QueueConfigurationUpdate();
+        }
     }
 
     public bool MouseEnabled
     {
         get => _configuration.Mouse.Enabled;
-        set { _configuration.Mouse.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
+        set
+        {
+            if (!CanToggleInputFiltering && value)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _configuration.Mouse.Enabled = value;
+            OnPropertyChanged();
+            QueueConfigurationUpdate();
+        }
     }
 
     public string KeyboardMode
@@ -215,6 +246,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            await RefreshInputFilteringPermissionAsyncCore();
             await ApplyFilterConfigurationAsync();
             Message = activation.Message ?? Runtime.Message ?? "Configuration loaded.";
         });
@@ -238,6 +270,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
             SetConfiguration(activation.ActiveConfiguration);
             SetSelectedProfileWithoutActivation(activation.ActiveProfile);
+            await RefreshInputFilteringPermissionAsyncCore();
             await ApplyFilterConfigurationAsync();
             Message = activation.Message ?? Runtime.Message ?? $"Activated {SelectedProfile?.Name}.";
         });
@@ -316,6 +349,14 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Rechecks the platform consent requirements. Missing consent turns both
+    /// filtering settings off, persists that state, and prevents them from being
+    /// enabled until every requirement has been granted.
+    /// </summary>
+    public Task RefreshInputFilteringPermissionsAsync() =>
+        RunAsync(RefreshInputFilteringPermissionAsyncCore);
+
     public void Dispose() => _services.InputRuntime.StatusChanged -= OnRuntimeStatusChanged;
 
     private async Task RefreshHostStateAsync(ProfileDescriptor? activeProfile)
@@ -332,6 +373,37 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             ?? Profiles.FirstOrDefault(profile => profile.IsDefault)
             ?? Profiles.FirstOrDefault());
         Autostart = await _services.Autostart.GetRegistrationAsync();
+    }
+
+    private async Task RefreshInputFilteringPermissionAsyncCore()
+    {
+        IReadOnlyList<PermissionRequirement> requirements = await _services.Permissions.GetRequiredPermissionsAsync();
+        CanToggleInputFiltering = requirements.All(requirement =>
+            requirement.Status is PermissionStatus.Granted or PermissionStatus.NotRequired);
+        if (CanToggleInputFiltering)
+        {
+            return;
+        }
+
+        bool changed = _configuration.Keyboard.Enabled || _configuration.Mouse.Enabled;
+        _configuration.Keyboard.Enabled = false;
+        _configuration.Mouse.Enabled = false;
+        OnPropertyChanged(nameof(KeyboardEnabled));
+        OnPropertyChanged(nameof(MouseEnabled));
+
+        if (changed && IsInitialized)
+        {
+            ConfigurationSaveResult save = await _services.Profiles.SaveActiveAsync(_configuration);
+            if (!save.Succeeded)
+            {
+                Message = save.Error ?? "Could not save the disabled filtering settings.";
+            }
+        }
+
+        if (Runtime.Status is InputFilterRuntimeStatus.Active or InputFilterRuntimeStatus.PermissionRequired)
+        {
+            Runtime = await _services.InputRuntime.StopAsync();
+        }
     }
 
     private void QueueConfigurationUpdate()
@@ -440,6 +512,11 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         PostToUi(() =>
         {
             Runtime = snapshot;
+            if (snapshot.Status == InputFilterRuntimeStatus.PermissionRequired)
+            {
+                _ = RefreshInputFilteringPermissionsAsync();
+            }
+
             if (!string.IsNullOrWhiteSpace(snapshot.Message))
             {
                 Message = snapshot.Message;

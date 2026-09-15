@@ -32,6 +32,7 @@ public partial class App : Application
         {
             _host = MacHostFactory.Create();
             _host.ViewModel.PermissionsWindowRequested += OnPermissionsWindowRequested;
+            _host.PermissionsViewModel.PermissionsRefreshed += OnPermissionsRefreshed;
             // This resident app starts from the menu bar. Do not assign a main
             // window to the desktop lifetime, which would show it at launch.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -44,6 +45,7 @@ public partial class App : Application
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                    _host.PermissionsViewModel.PermissionsRefreshed -= OnPermissionsRefreshed;
                     _host.Dispose();
                 }
             };
@@ -69,6 +71,8 @@ public partial class App : Application
             isEnabled => viewModel.KeyboardEnabled = isEnabled);
         _filterMouse = CreateToggleMenuItem("Filter mouse", viewModel.MouseEnabled,
             isEnabled => viewModel.MouseEnabled = isEnabled);
+        _filterKeyboard.IsEnabled = viewModel.CanToggleInputFiltering;
+        _filterMouse.IsEnabled = viewModel.CanToggleInputFiltering;
         _profileAutoSwitch = CreateToggleMenuItem("Profile auto-switch", viewModel.AutoSwitchProfiles,
             isEnabled => viewModel.AutoSwitchProfiles = isEnabled);
         _trackEvents = CreateToggleMenuItem("Track events", viewModel.DiagnosticsEnabled,
@@ -155,6 +159,10 @@ public partial class App : Application
 
         switch (e.PropertyName)
         {
+            case nameof(DesktopMainViewModel.CanToggleInputFiltering):
+                if (_filterKeyboard is not null) _filterKeyboard.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
+                if (_filterMouse is not null) _filterMouse.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
+                break;
             case nameof(DesktopMainViewModel.KeyboardEnabled):
                 _filterKeyboard?.IsChecked = _host.ViewModel.KeyboardEnabled;
                 break;
@@ -183,6 +191,14 @@ public partial class App : Application
     }
 
     private void OnPermissionsWindowRequested(object? sender, EventArgs e) => ShowPermissionsWindow();
+
+    private async void OnPermissionsRefreshed(object? sender, EventArgs e)
+    {
+        if (_host is not null)
+        {
+            await _host.ViewModel.RefreshInputFilteringPermissionsAsync();
+        }
+    }
 
     private void ShowPermissionsWindow()
     {

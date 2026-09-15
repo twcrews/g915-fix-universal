@@ -13,14 +13,14 @@
         <StackPanel Spacing="12">
           <TextBlock Text="Filtering" Classes="section-title" />
           <Grid ColumnDefinitions="Auto,Auto,*,Auto,*" ColumnSpacing="12">
-            <ToggleSwitch Content="Enable keyboard filtering" IsChecked="{Binding KeyboardEnabled}" VerticalAlignment="Center" />
+            <ToggleSwitch Content="Enable keyboard filtering" IsChecked="{Binding KeyboardEnabled}" IsEnabled="{Binding CanToggleInputFiltering}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="Mode" VerticalAlignment="Center" />
             <ComboBox Grid.Column="2" ItemsSource="{Binding KeyboardModes}" SelectedItem="{Binding KeyboardMode}" />
             <TextBlock Grid.Column="3" Text="Minimum repeat interval (ms)" VerticalAlignment="Center" />
             <TextBox Grid.Column="4" Text="{Binding KeyboardMinimumRepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
           </Grid>
           <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12">
-            <ToggleSwitch Content="Enable mouse filtering" IsChecked="{Binding MouseEnabled}" VerticalAlignment="Center" />
+            <ToggleSwitch Content="Enable mouse filtering" IsChecked="{Binding MouseEnabled}" IsEnabled="{Binding CanToggleInputFiltering}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="Mouse repeat interval (ms)" VerticalAlignment="Center" />
             <TextBox Grid.Column="2" Text="{Binding MouseMinimumRepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
           </Grid>
