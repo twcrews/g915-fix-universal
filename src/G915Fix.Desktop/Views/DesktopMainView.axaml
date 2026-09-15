@@ -43,7 +43,7 @@
       <Border Classes="card">
         <StackPanel Spacing="10">
           <TextBlock Text="Application" Classes="section-title" />
-          <ToggleSwitch Content="Write diagnostic events" IsChecked="{Binding DiagnosticsEnabled}" />
+          <ToggleSwitch Content="Write diagnostic events" IsChecked="{Binding DiagnosticsEnabled}" IsEnabled="{Binding CanToggleDiagnostics}" />
           <Button Content="Open diagnostic heatmap" Command="{Binding OpenHeatmapCommand}" />
           <TextBlock Text="{Binding Message}" Classes="status" TextWrapping="Wrap" />
           <ToggleSwitch Content="Check for updates" IsChecked="{Binding CheckForUpdates}" />

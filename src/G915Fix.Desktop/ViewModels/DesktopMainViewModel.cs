@@ -158,6 +158,9 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _canToggleInputFiltering, value);
     }
 
+    /// <summary>Whether platform permission currently allows diagnostic input capture.</summary>
+    public bool CanToggleDiagnostics => CanToggleInputFiltering;
+
     public bool KeyboardEnabled
     {
         get => _configuration.Keyboard.Enabled;
@@ -213,7 +216,18 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public bool DiagnosticsEnabled
     {
         get => _configuration.Diagnostics.Enabled;
-        set { _configuration.Diagnostics.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
+        set
+        {
+            if (!CanToggleDiagnostics && value)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            _configuration.Diagnostics.Enabled = value;
+            OnPropertyChanged();
+            QueueConfigurationUpdate();
+        }
     }
 
     public bool AutoSwitchProfiles
@@ -350,9 +364,9 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Rechecks the platform consent requirements. Missing consent turns both
-    /// filtering settings off, persists that state, and prevents them from being
-    /// enabled until every requirement has been granted.
+    /// Rechecks the platform consent requirements. Missing consent turns filtering
+    /// and diagnostic capture off, persists that state, and prevents them from
+    /// being enabled until every requirement has been granted.
     /// </summary>
     public Task RefreshInputFilteringPermissionsAsync() =>
         RunAsync(RefreshInputFilteringPermissionAsyncCore);
@@ -380,16 +394,19 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         IReadOnlyList<PermissionRequirement> requirements = await _services.Permissions.GetRequiredPermissionsAsync();
         CanToggleInputFiltering = requirements.All(requirement =>
             requirement.Status is PermissionStatus.Granted or PermissionStatus.NotRequired);
+        OnPropertyChanged(nameof(CanToggleDiagnostics));
         if (CanToggleInputFiltering)
         {
             return;
         }
 
-        bool changed = _configuration.Keyboard.Enabled || _configuration.Mouse.Enabled;
+        bool changed = _configuration.Keyboard.Enabled || _configuration.Mouse.Enabled || _configuration.Diagnostics.Enabled;
         _configuration.Keyboard.Enabled = false;
         _configuration.Mouse.Enabled = false;
+        _configuration.Diagnostics.Enabled = false;
         OnPropertyChanged(nameof(KeyboardEnabled));
         OnPropertyChanged(nameof(MouseEnabled));
+        OnPropertyChanged(nameof(DiagnosticsEnabled));
 
         if (changed && IsInitialized)
         {

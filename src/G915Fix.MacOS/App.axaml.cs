@@ -77,6 +77,7 @@ public partial class App : Application
             isEnabled => viewModel.AutoSwitchProfiles = isEnabled);
         _trackEvents = CreateToggleMenuItem("Track events", viewModel.DiagnosticsEnabled,
             isEnabled => viewModel.DiagnosticsEnabled = isEnabled);
+        _trackEvents.IsEnabled = viewModel.CanToggleDiagnostics;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         var updateGames = new NativeMenuItem("Update games list...")
@@ -162,6 +163,9 @@ public partial class App : Application
             case nameof(DesktopMainViewModel.CanToggleInputFiltering):
                 if (_filterKeyboard is not null) _filterKeyboard.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
                 if (_filterMouse is not null) _filterMouse.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
+                break;
+            case nameof(DesktopMainViewModel.CanToggleDiagnostics):
+                if (_trackEvents is not null) _trackEvents.IsEnabled = _host.ViewModel.CanToggleDiagnostics;
                 break;
             case nameof(DesktopMainViewModel.KeyboardEnabled):
                 _filterKeyboard?.IsChecked = _host.ViewModel.KeyboardEnabled;
