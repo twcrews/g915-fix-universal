@@ -60,7 +60,8 @@ public sealed class MacHeatmapReportServiceTests
                 {
                     openedPath = path;
                     return Task.CompletedTask;
-                });
+                },
+                isTrackingEnabled: () => false);
 
             var result = await service.GenerateAndOpenAsync();
 
@@ -68,7 +69,9 @@ public sealed class MacHeatmapReportServiceTests
             string reportPath = result.ReportPath!;
             Assert.AreEqual(reportPath, openedPath);
             StringAssert.Contains(result.Message, "empty heatmap");
-            StringAssert.Contains(await File.ReadAllTextAsync(reportPath), "Filtered events");
+            string html = await File.ReadAllTextAsync(reportPath);
+            StringAssert.Contains(html, "Filtered events");
+            StringAssert.Contains(html, "Key press tracking is disabled. The heat map will not be updated.");
         }
         finally
         {

@@ -42,6 +42,11 @@ public static class HtmlHeatmapRenderer
         html.AppendLine("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
         html.AppendLine("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
         html.AppendLine($"<title>{encodedTitle}</title><style>{Css}</style></head><body><main>");
+        if (!report.IsTrackingEnabled)
+        {
+            html.AppendLine("<section class=\"warning tracking-warning\" role=\"alert\">Key press tracking is disabled. The heat map will not be updated.</section>");
+        }
+
         html.AppendLine($"<h1>{encodedTitle}</h1><p class=\"subtitle\">Offline diagnostic report</p>");
         html.AppendLine("<section class=\"stats\">");
         Stat(html, report.TotalFilteredEvents.ToString(CultureInfo.InvariantCulture), "Filtered events");
@@ -164,12 +169,12 @@ public static class HtmlHeatmapRenderer
         h2 { margin-top: 2rem; font-size: 1rem; } .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
         .stat,.warning,.key,.mouse-button { border:1px solid #d9dce5; border-radius:.5rem; background:#fff; }
         .stat { padding:1rem; }.stat b,.stat span { display:block; }.stat b { font-size:1.25rem; }.stat span { color:#667085; font-size:.8rem; }
-        .warning { margin-top:1rem; padding:1rem; border-color:#ba7517; }.warning ul { margin-bottom:0; }
+        .warning { margin-top:1rem; padding:1rem; border-color:#ba7517; }.tracking-warning { margin:0 0 1rem; background:#fff4d6; font-weight:600; }.warning ul { margin-bottom:0; }
         .keyboard { overflow:auto; padding:.5rem; }.key-row { display:flex; gap:.35rem; margin-bottom:.35rem; min-width:max-content; }
         .key { width:3.4rem; min-height:3.25rem; padding:.3rem; background:var(--heat); text-align:center; }.key span,.key b { display:block; font-size:.75rem; }.key b { margin-top:.25rem; }
         .mouse { display:flex; gap:.5rem; flex-wrap:wrap; }.mouse-button { min-width:7rem; padding:1rem; background:var(--heat); }.mouse-button span,.mouse-button b { display:block; }
         .daily { display:flex; flex-direction:column; gap:.35rem; }.day { display:grid; grid-template-columns:6rem 1fr 3rem; gap:.5rem; align-items:center; }.bar { height:.8rem; background:#e6e8ee; border-radius:.25rem; overflow:hidden; }.bar i { display:block; height:100%; background:linear-gradient(90deg,#2ea84f,#c81849); }.ignored { color:#667085; font-size:.8rem; }
-        @media (prefers-color-scheme:dark) { body { background:#131722;color:#eef1f7; }.stat,.warning,.key,.mouse-button { border-color:#394050; }.stat { background:#1c2230; }.key,.mouse-button { color:#18202b; }.warning { background:#2a2418; }.bar { background:#394050; } }
+        @media (prefers-color-scheme:dark) { body { background:#131722;color:#eef1f7; }.stat,.warning,.key,.mouse-button { border-color:#394050; }.stat { background:#1c2230; }.key,.mouse-button { color:#18202b; }.warning { background:#2a2418; }.tracking-warning { background:#2a2418; }.bar { background:#394050; } }
         @media (max-width:700px) { body { padding:1rem; }.stats { grid-template-columns:repeat(2,1fr); } }
         """;
 }

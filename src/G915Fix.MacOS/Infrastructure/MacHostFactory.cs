@@ -32,11 +32,13 @@ internal static class MacHostFactory
         string executable = Environment.ProcessPath ?? throw new InvalidOperationException("The host executable path is unavailable.");
         var autostart = new MacAutostartService(executable);
         var updates = new GitHubReleaseUpdateChecker(new HttpClient());
-        var heatmaps = new MacHeatmapReportService(() =>
-        {
-            string? path = profiles.ActiveConfig?.Diagnostics?.LogPath;
-            return string.IsNullOrWhiteSpace(path) ? defaultDiagnosticPath : path;
-        });
+        var heatmaps = new MacHeatmapReportService(
+            () =>
+            {
+                string? path = profiles.ActiveConfig?.Diagnostics?.LogPath;
+                return string.IsNullOrWhiteSpace(path) ? defaultDiagnosticPath : path;
+            },
+            isTrackingEnabled: () => profiles.ActiveConfig?.Diagnostics?.Enabled == true);
         string gameListPath = Path.Combine(configDirectory, "games.txt");
         var gameListUpdater = new DiscordGameListUpdater(
             new HttpClient(),

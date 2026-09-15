@@ -8,13 +8,16 @@ internal sealed class MacHeatmapReportService : IHeatmapReportService
 {
     private readonly Func<string?> _getDiagnosticPath;
     private readonly Func<string, CancellationToken, Task> _open;
+    private readonly Func<bool> _isTrackingEnabled;
 
     public MacHeatmapReportService(
         Func<string?> getDiagnosticPath,
-        Func<string, CancellationToken, Task>? open = null)
+        Func<string, CancellationToken, Task>? open = null,
+        Func<bool>? isTrackingEnabled = null)
     {
         _getDiagnosticPath = getDiagnosticPath ?? throw new ArgumentNullException(nameof(getDiagnosticPath));
         _open = open ?? OpenAsync;
+        _isTrackingEnabled = isTrackingEnabled ?? (() => true);
     }
 
     public async Task<HeatmapGenerationResult> GenerateAndOpenAsync(CancellationToken cancellationToken = default)
@@ -37,6 +40,7 @@ internal sealed class MacHeatmapReportService : IHeatmapReportService
                     JsonLinesDiagnosticLog.ReadAsync(logPath, cancellationToken),
                     cancellationToken: cancellationToken).ConfigureAwait(false)
                 : HeatmapAnalyzer.Analyze([]);
+            report = report with { IsTrackingEnabled = _isTrackingEnabled() };
             await File.WriteAllTextAsync(temporaryPath, HtmlHeatmapRenderer.Render(report), cancellationToken).ConfigureAwait(false);
             File.Move(temporaryPath, reportPath, overwrite: true);
             await _open(reportPath, cancellationToken).ConfigureAwait(false);

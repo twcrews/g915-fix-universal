@@ -10,7 +10,8 @@ public sealed record HeatmapReport(
     IReadOnlyDictionary<DateOnly, int> DailyCounts,
     DateTimeOffset? LastEventTimestamp,
     int IgnoredEventCount,
-    IReadOnlyList<string> ConfigurationWarnings)
+    IReadOnlyList<string> ConfigurationWarnings,
+    bool IsTrackingEnabled = true)
 {
     public KeyValuePair<HidKeyboardUsage, int>? MostFilteredKey => KeyboardCounts.Count == 0
         ? null

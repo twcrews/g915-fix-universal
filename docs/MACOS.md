@@ -62,8 +62,9 @@ The app stores `config.json` and JSON profiles in
 `~/Library/Logs/G915Fix/filter-diagnostics.jsonl` when diagnostics are enabled.
 Use **Open diagnostic heatmap** in the Application section to generate a
 self-contained HTML file alongside the log and open it in the default browser.
-It opens an empty report when no diagnostics have been recorded yet; enable
-Diagnostics before filtering to populate it. The menu-bar menu also provides
+It opens an empty report when no diagnostics have been recorded yet. When
+**Track events** is disabled, the report displays a warning that it will not be
+updated; enable it before filtering to populate the heatmap. The menu-bar menu also provides
 **Filter keyboard**, **Filter mouse**, **Profile auto-switch**, **Track events**,
 **Update games list...**, and **Event heatmap...** for the corresponding common
 settings and actions. Updating the game list shows a dismissible alert when the

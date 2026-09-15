@@ -33,6 +33,9 @@ public sealed class HeatmapTests
         Assert.AreEqual(1, report.IgnoredEventCount);
         CollectionAssert.AreEqual(new[] { "Invalid key <example>" }, report.ConfigurationWarnings.ToArray());
         StringAssert.Contains(HtmlHeatmapRenderer.Render(report), "Invalid key &lt;example&gt;");
+        StringAssert.Contains(
+            HtmlHeatmapRenderer.Render(report with { IsTrackingEnabled = false }),
+            "Key press tracking is disabled. The heat map will not be updated.");
     }
 
     [TestMethod]
