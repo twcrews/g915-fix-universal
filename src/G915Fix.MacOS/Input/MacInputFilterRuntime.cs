@@ -127,8 +127,22 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
             }
         }
 
-        _thread?.Join(TimeSpan.FromSeconds(2));
-        ReleaseTapResources();
+        // Core Foundation run-loop sources must be removed and released by the
+        // thread that added them. In particular, removing a source from the UI
+        // thread while its input thread is still running can block indefinitely
+        // in CFRunLoopRemoveSource, leaving a menu-bar Quit half completed.
+        // Wait briefly for the owner to perform its cleanup, but never touch
+        // those resources from this thread if it has not stopped yet.
+        Thread? tapThread;
+        lock (_sync)
+        {
+            tapThread = _thread;
+        }
+        if (tapThread is not null && tapThread != Thread.CurrentThread)
+        {
+            tapThread.Join(TimeSpan.FromSeconds(2));
+        }
+
         return Task.FromResult(Publish(InputFilterRuntimeSnapshot.Inactive));
     }
 
@@ -194,12 +208,17 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
 
     private void RunTapLoop(TaskCompletionSource<Exception?> started)
     {
+        IntPtr tap = IntPtr.Zero;
+        IntPtr runLoop = IntPtr.Zero;
+        IntPtr source = IntPtr.Zero;
+        IntPtr mode = IntPtr.Zero;
+        bool sourceAdded = false;
         try
         {
             ulong mask = EventMask(MacNative.KeyDown, MacNative.KeyUp, MacNative.FlagsChanged,
                 MacNative.LeftMouseDown, MacNative.LeftMouseUp, MacNative.RightMouseDown,
                 MacNative.RightMouseUp, MacNative.OtherMouseDown, MacNative.OtherMouseUp);
-            IntPtr tap = MacNative.CGEventTapCreate(
+            tap = MacNative.CGEventTapCreate(
                 MacNative.EventTapLocationHid,
                 MacNative.EventTapPlacementHeadInsert,
                 MacNative.EventTapOptionsDefault,
@@ -211,14 +230,11 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
                 throw new UnauthorizedAccessException("CoreGraphics rejected the event tap. Check Accessibility and Input Monitoring permissions.");
             }
 
-            IntPtr runLoop = MacNative.CFRunLoopGetCurrent();
-            IntPtr mode = MacNative.CFStringCreateWithCString(IntPtr.Zero, "kCFRunLoopDefaultMode", MacNative.Utf8StringEncoding);
-            IntPtr source = MacNative.CFMachPortCreateRunLoopSource(IntPtr.Zero, tap, 0);
+            runLoop = MacNative.CFRunLoopGetCurrent();
+            mode = MacNative.CFStringCreateWithCString(IntPtr.Zero, "kCFRunLoopDefaultMode", MacNative.Utf8StringEncoding);
+            source = MacNative.CFMachPortCreateRunLoopSource(IntPtr.Zero, tap, 0);
             if (source == IntPtr.Zero || mode == IntPtr.Zero)
             {
-                if (source != IntPtr.Zero) MacNative.CFRelease(source);
-                if (mode != IntPtr.Zero) MacNative.CFRelease(mode);
-                MacNative.CFRelease(tap);
                 throw new InvalidOperationException("CoreFoundation could not attach the input event tap to a run loop.");
             }
 
@@ -230,6 +246,7 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
                 _runLoopMode = mode;
             }
             MacNative.CFRunLoopAddSource(runLoop, source, mode);
+            sourceAdded = true;
             MacNative.CGEventTapEnable(tap, true);
             started.TrySetResult(null);
             MacNative.CFRunLoopRun();
@@ -238,6 +255,30 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
         {
             started.TrySetResult(exception);
             Publish(new InputFilterRuntimeSnapshot(InputFilterRuntimeStatus.Faulted, Message: exception.Message));
+        }
+        finally
+        {
+            // CFRunLoop and its sources have thread affinity. This is the only
+            // place they are detached and released, including failed startup.
+            if (sourceAdded)
+            {
+                MacNative.CFRunLoopRemoveSource(runLoop, source, mode);
+            }
+            if (source != IntPtr.Zero) MacNative.CFRelease(source);
+            if (mode != IntPtr.Zero) MacNative.CFRelease(mode);
+            if (tap != IntPtr.Zero) MacNative.CFRelease(tap);
+
+            lock (_sync)
+            {
+                if (_tap == tap)
+                {
+                    _tap = _runLoop = _source = _runLoopMode = IntPtr.Zero;
+                }
+                if (_thread == Thread.CurrentThread)
+                {
+                    _thread = null;
+                }
+            }
         }
     }
 
@@ -376,22 +417,6 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
     {
         _state.Update(snapshot);
         return snapshot;
-    }
-
-    private void ReleaseTapResources()
-    {
-        lock (_sync)
-        {
-            if (_runLoop != IntPtr.Zero && _source != IntPtr.Zero && _runLoopMode != IntPtr.Zero)
-            {
-                MacNative.CFRunLoopRemoveSource(_runLoop, _source, _runLoopMode);
-            }
-            if (_source != IntPtr.Zero) MacNative.CFRelease(_source);
-            if (_runLoopMode != IntPtr.Zero) MacNative.CFRelease(_runLoopMode);
-            if (_tap != IntPtr.Zero) MacNative.CFRelease(_tap);
-            _tap = _runLoop = _source = _runLoopMode = IntPtr.Zero;
-            _thread = null;
-        }
     }
 
     private static ulong EventMask(params nuint[] eventTypes) => eventTypes.Aggregate(0UL, static (mask, type) => mask | (1UL << (int)type));

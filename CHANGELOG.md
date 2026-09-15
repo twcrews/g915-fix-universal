@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Defer macOS menu-bar quit teardown until the native menu action has completed, preventing the app from hanging while quitting.
+- Defer macOS menu-bar quit teardown until the native menu action has completed, and release CoreGraphics event-tap resources from their owning thread so quitting cannot hang after the menu-bar item disappears.
 
 ## [Initial release]
 
