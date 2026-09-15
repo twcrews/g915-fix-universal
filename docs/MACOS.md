@@ -46,8 +46,9 @@ appearance and `res/app-icon-white.png` in dark appearance.
    **Accessibility** and **Input Monitoring** are allowed. It is also available
    at any time from the menu-bar **Permissions...** item.
 2. Click each permission button marked **Not allowed**. macOS displays its
-   consent prompt when it can; the app also opens the matching Privacy & Security
-   pane as a fallback for a previously rejected or suppressed prompt.
+   consent prompt when it can. If a prompt was previously rejected or does not
+   appear, click that permission again to open the matching Privacy & Security
+   pane as a fallback.
 3. Return to the window and verify both buttons read **Allowed**. Quit and reopen
    the app if macOS asks for it, then click **Initialize** and **Start**.
 4. Confirm the status reads **Active** before testing a keyboard or mouse.

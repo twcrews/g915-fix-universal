@@ -17,6 +17,8 @@ internal sealed class MacPermissionService : IPermissionService
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0"><dict><key>AXTrustedCheckOptionPrompt</key><true/></dict></plist>
         """u8.ToArray();
+    private bool _accessibilityPromptRequested;
+    private bool _inputMonitoringPromptRequested;
 
     public Task<IReadOnlyList<PermissionRequirement>> GetRequiredPermissionsAsync(CancellationToken cancellationToken = default)
     {
@@ -86,23 +88,49 @@ internal sealed class MacPermissionService : IPermissionService
             granted ? PermissionAction.None : PermissionAction.Request);
     }
 
-    private static PermissionRequirement RequestAccessibility()
+    private PermissionRequirement RequestAccessibility()
     {
+        if (_accessibilityPromptRequested)
+        {
+            _ = TryOpenSettings(AccessibilitySettingsUri);
+            return DescribeAccessibility() with
+            {
+                Message = "System Settings was opened for Accessibility. Allow G915 Fix, then return to this window.",
+                RequiredAction = PermissionAction.CompleteManualSetup
+            };
+        }
+
+        _accessibilityPromptRequested = true;
         _ = RequestAccessibilityPrompt();
-        // TCC can suppress a prompt after a previous denial. Opening the exact pane
-        // is the reliable fallback and also gives the user a visible way to finish.
-        _ = TryOpenSettings(AccessibilitySettingsUri);
-        return DescribeAccessibility() with { RequiredAction = PermissionAction.CompleteManualSetup };
+        return DescribeAccessibility() with
+        {
+            Message = "Respond to the macOS Accessibility prompt. If it does not appear, click this permission again to open System Settings.",
+            RequiredAction = PermissionAction.Request
+        };
     }
 
-    private static PermissionRequirement RequestInputMonitoring()
+    private PermissionRequirement RequestInputMonitoring()
     {
+        if (_inputMonitoringPromptRequested)
+        {
+            _ = TryOpenSettings(InputMonitoringSettingsUri);
+            return DescribeInputMonitoring() with
+            {
+                Message = "System Settings was opened for Input Monitoring. Allow G915 Fix, then return to this window.",
+                RequiredAction = PermissionAction.CompleteManualSetup
+            };
+        }
+
+        _inputMonitoringPromptRequested = true;
+        // This is the documented TCC request API. It returns false both while the
+        // prompt is awaiting a decision and after a denial, so its return value
+        // cannot tell us whether System Settings should be used as a fallback.
         _ = MacNative.CGRequestListenEventAccess();
-        // CGRequestListenEventAccess prompts where macOS permits it. It does not
-        // report whether TCC suppressed a previously rejected prompt, so provide
-        // the nearest System Settings view as the fallback path.
-        _ = TryOpenSettings(InputMonitoringSettingsUri);
-        return DescribeInputMonitoring() with { RequiredAction = PermissionAction.CompleteManualSetup };
+        return DescribeInputMonitoring() with
+        {
+            Message = "Respond to the macOS Input Monitoring prompt. If it does not appear, click this permission again to open System Settings.",
+            RequiredAction = PermissionAction.Request
+        };
     }
 
     private static bool RequestAccessibilityPrompt()
