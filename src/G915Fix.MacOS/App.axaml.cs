@@ -119,7 +119,14 @@ public partial class App : Application
             ToggleType = NativeMenuItemToggleType.CheckBox,
             IsChecked = isChecked
         };
-        item.Click += (_, _) => setValue(item.IsChecked == true);
+        item.Click += (_, _) =>
+        {
+            // Native menu providers report activation but do not change this
+            // Avalonia property. Toggle it before updating the view model.
+            bool enabled = item.IsChecked != true;
+            item.IsChecked = enabled;
+            setValue(enabled);
+        };
         return item;
     }
 
