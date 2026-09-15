@@ -48,10 +48,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         _synchronizationContext = SynchronizationContext.Current;
         _runtime = services.InputRuntime.Current;
 
-        InitializeCommand = new AsyncCommand(InitializeAsync, () => !IsBusy);
-        StartCommand = new AsyncCommand(StartAsync, () => !IsBusy);
-        StopCommand = new AsyncCommand(StopAsync, () => !IsBusy && Runtime.Status != InputFilterRuntimeStatus.Inactive);
-        SaveCommand = new AsyncCommand(SaveAsync, () => !IsBusy && IsInitialized);
         ActivateProfileCommand = new AsyncCommand(ActivateSelectedProfileAsync, () => !IsBusy && SelectedProfile is not null);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
         OpenPermissionsCommand = new AsyncCommand(OpenPermissionsAsync);
@@ -67,10 +63,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ObservableCollection<ProfileDescriptor> Profiles { get; } = [];
     public ObservableCollection<ConfigurationWarning> ConfigurationWarnings { get; } = [];
 
-    public ICommand InitializeCommand { get; }
-    public ICommand StartCommand { get; }
-    public ICommand StopCommand { get; }
-    public ICommand SaveCommand { get; }
     public ICommand ActivateProfileCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
     public ICommand OpenPermissionsCommand { get; }
@@ -205,67 +197,26 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         set { _configuration.Updates.CheckForUpdates = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
-    public async Task InitializeAsync()
+    /// <summary>
+    /// Loads the persisted startup profile and host state. Hosts call this during
+    /// launch; filtering then follows the loaded keyboard and mouse toggles.
+    /// </summary>
+    public async Task LoadAsync()
     {
         await RunAsync(async () =>
         {
             ProfileActivationResult activation = await _services.Profiles.InitializeAsync();
             SetConfiguration(activation.ActiveConfiguration ?? new AppConfiguration());
-            await RefreshHostStateAsync();
             IsInitialized = activation.Succeeded;
-            if (activation.Succeeded)
+            await RefreshHostStateAsync(activation.ActiveProfile);
+            if (!activation.Succeeded)
             {
-                Runtime = await _services.InputRuntime.StartAsync(CompileConfiguration());
-            }
-
-            Message = activation.Message ?? (activation.Succeeded ? Runtime.Message ?? "Configuration loaded and filtering started." : "Configuration could not be loaded.");
-        });
-    }
-
-    public async Task StartAsync()
-    {
-        await RunAsync(async () =>
-        {
-            if (!IsInitialized)
-            {
-                ProfileActivationResult activation = await _services.Profiles.InitializeAsync();
-                SetConfiguration(activation.ActiveConfiguration ?? new AppConfiguration());
-                IsInitialized = activation.Succeeded;
-                if (!activation.Succeeded)
-                {
-                    Message = activation.Message ?? "Configuration could not be loaded.";
-                    return;
-                }
-            }
-
-            Runtime = await _services.InputRuntime.StartAsync(CompileConfiguration());
-            Message = Runtime.Message ?? "Input filtering started.";
-        });
-    }
-
-    public async Task StopAsync()
-    {
-        await RunAsync(async () =>
-        {
-            Runtime = await _services.InputRuntime.StopAsync();
-            Message = Runtime.Message ?? "Input filtering stopped.";
-        });
-    }
-
-    public async Task SaveAsync()
-    {
-        await RunAsync(async () =>
-        {
-            ConfigurationCompilationResult compilation = CompileConfiguration();
-            var save = await _services.Profiles.SaveActiveAsync(_configuration);
-            if (!save.Succeeded)
-            {
-                Message = save.Error ?? "Could not save configuration.";
+                Message = activation.Message ?? "Configuration could not be loaded.";
                 return;
             }
 
-            Runtime = await _services.InputRuntime.ApplyConfigurationAsync(compilation);
-            Message = Runtime.Message ?? "Configuration saved and applied.";
+            await ApplyFilterConfigurationAsync();
+            Message = activation.Message ?? Runtime.Message ?? "Configuration loaded.";
         });
     }
 
@@ -286,9 +237,9 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             }
 
             SetConfiguration(activation.ActiveConfiguration);
-            SelectedProfile = activation.ActiveProfile;
-            Runtime = await _services.InputRuntime.ApplyConfigurationAsync(CompileConfiguration());
-            Message = activation.Message ?? $"Activated {SelectedProfile?.Name}.";
+            SetSelectedProfileWithoutActivation(activation.ActiveProfile);
+            await ApplyFilterConfigurationAsync();
+            Message = activation.Message ?? Runtime.Message ?? $"Activated {SelectedProfile?.Name}.";
         });
     }
 
@@ -367,7 +318,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
     public void Dispose() => _services.InputRuntime.StatusChanged -= OnRuntimeStatusChanged;
 
-    private async Task RefreshHostStateAsync()
+    private async Task RefreshHostStateAsync(ProfileDescriptor? activeProfile)
     {
         IReadOnlyList<ProfileDescriptor> profiles = await _services.Profiles.ListProfilesAsync();
         Profiles.Clear();
@@ -376,7 +327,10 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             Profiles.Add(profile);
         }
 
-        SetSelectedProfileWithoutActivation(Profiles.FirstOrDefault(profile => profile.IsDefault) ?? Profiles.FirstOrDefault());
+        SetSelectedProfileWithoutActivation(
+            Profiles.FirstOrDefault(profile => string.Equals(profile.Path, activeProfile?.Path, StringComparison.OrdinalIgnoreCase))
+            ?? Profiles.FirstOrDefault(profile => profile.IsDefault)
+            ?? Profiles.FirstOrDefault());
         Autostart = await _services.Autostart.GetRegistrationAsync();
     }
 
@@ -412,9 +366,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
                     return;
                 }
 
-                Runtime = Runtime.Status == InputFilterRuntimeStatus.Active
-                    ? await _services.InputRuntime.ApplyConfigurationAsync(compilation)
-                    : await _services.InputRuntime.StartAsync(compilation);
+                await ApplyFilterConfigurationAsync(compilation);
                 Message = Runtime.Message ?? "Configuration saved and applied.";
             });
 
@@ -424,6 +376,19 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
                 return;
             }
         }
+    }
+
+    private async Task ApplyFilterConfigurationAsync(ConfigurationCompilationResult? compilation = null)
+    {
+        if (!KeyboardEnabled && !MouseEnabled)
+        {
+            Runtime = await _services.InputRuntime.StopAsync();
+            return;
+        }
+
+        Runtime = Runtime.Status == InputFilterRuntimeStatus.Active
+            ? await _services.InputRuntime.ApplyConfigurationAsync(compilation ?? CompileConfiguration())
+            : await _services.InputRuntime.StartAsync(compilation ?? CompileConfiguration());
     }
 
     private void SetSelectedProfileWithoutActivation(ProfileDescriptor? profile)
@@ -515,7 +480,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     {
         foreach (ICommand command in new[]
                  {
-                     InitializeCommand, StartCommand, StopCommand, SaveCommand,
                      ActivateProfileCommand, CheckForUpdatesCommand, OpenPermissionsCommand, OpenHeatmapCommand,
                      UpdateGamesListCommand
                  })

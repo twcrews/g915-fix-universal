@@ -50,7 +50,7 @@ public partial class App : Application
             ActualThemeVariantChanged += (_, _) => UpdateMenuBarIcon();
             Dispatcher.UIThread.Post(async () =>
             {
-                await _host.ViewModel.InitializeAsync();
+                await _host.ViewModel.LoadAsync();
                 if (await _host.PermissionsViewModel.RefreshAsync())
                 {
                     ShowPermissionsWindow();
