@@ -19,6 +19,10 @@
   <Style Selector="TextBlock.status">
     <Setter Property="Opacity" Value="0.8" />
   </Style>
+  <Style Selector="Button.permission">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="14,10" />
+  </Style>
   <Style Selector="TextBlock.warning">
     <Setter Property="Foreground" Value="{DynamicResource SystemControlWarningTextForegroundBrush}" />
   </Style>

@@ -14,6 +14,7 @@ public partial class App : Application
 {
     private MacHost? _host;
     private MainWindow? _window;
+    private PermissionsWindow? _permissionsWindow;
     private TrayIcon? _tray;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -28,7 +29,14 @@ public partial class App : Application
             CreateMenuBarIcon(desktop);
             desktop.Exit += (_, _) => _host.Dispose();
             ActualThemeVariantChanged += (_, _) => UpdateMenuBarIcon();
-            Dispatcher.UIThread.Post(async () => await _host.ViewModel.InitializeAsync());
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await _host.ViewModel.InitializeAsync();
+                if (await _host.PermissionsViewModel.RefreshAsync())
+                {
+                    ShowPermissionsWindow();
+                }
+            });
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -38,14 +46,18 @@ public partial class App : Application
     {
         var open = new NativeMenuItem("Open G915 Fix");
         open.Click += (_, _) => ShowWindow();
+        var permissions = new NativeMenuItem("Permissions...");
+        permissions.Click += (_, _) => ShowPermissionsWindow();
         var quit = new NativeMenuItem("Quit G915 Fix");
         quit.Click += (_, _) =>
         {
             if (_window is not null) _window.AllowClose = true;
+            if (_permissionsWindow is not null) _permissionsWindow.AllowClose = true;
             desktop.Shutdown();
         };
         var menu = new NativeMenu();
         menu.Items.Add(open);
+        menu.Items.Add(permissions);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(quit);
 
@@ -68,6 +80,19 @@ public partial class App : Application
         _window.Show();
         _window.WindowState = WindowState.Normal;
         _window.Activate();
+    }
+
+    private void ShowPermissionsWindow()
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        _permissionsWindow ??= new PermissionsWindow(_host.PermissionsViewModel);
+        _permissionsWindow.Show();
+        _permissionsWindow.WindowState = WindowState.Normal;
+        _permissionsWindow.Activate();
     }
 
     private void UpdateMenuBarIcon()

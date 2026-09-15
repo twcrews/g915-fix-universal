@@ -42,12 +42,14 @@ appearance and `res/app-icon-white.png` in dark appearance.
 
 ## Grant input permissions
 
-1. Open **G915 Fix** from the menu bar, then click **Initialize**.
-2. In the **Permissions** section, select and grant **Accessibility** and
-   **Input Monitoring**. The button opens the relevant Privacy & Security area;
-   Input Monitoring may need to be selected manually after it opens.
-3. Quit and reopen the app if macOS asks for it, click **Initialize** again, then
-   click **Start**.
+1. On launch, **Permissions Required** opens automatically until both
+   **Accessibility** and **Input Monitoring** are allowed. It is also available
+   at any time from the menu-bar **Permissions...** item.
+2. Click each permission button marked **Not allowed**. macOS displays its
+   consent prompt when it can; the app also opens the matching Privacy & Security
+   pane as a fallback for a previously rejected or suppressed prompt.
+3. Return to the window and verify both buttons read **Allowed**. Quit and reopen
+   the app if macOS asks for it, then click **Initialize** and **Start**.
 4. Confirm the status reads **Active** before testing a keyboard or mouse.
 
 The app stores `config.json` and JSON profiles in

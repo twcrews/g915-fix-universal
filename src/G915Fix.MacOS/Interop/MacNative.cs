@@ -68,6 +68,10 @@ internal static class MacNative
 
     [DllImport(ApplicationServices)]
     [return: MarshalAs(UnmanagedType.I1)]
+    internal static extern bool AXIsProcessTrustedWithOptions(IntPtr options);
+
+    [DllImport(ApplicationServices)]
+    [return: MarshalAs(UnmanagedType.I1)]
     internal static extern bool CGPreflightListenEventAccess();
 
     [DllImport(ApplicationServices)]
@@ -79,6 +83,15 @@ internal static class MacNative
 
     [DllImport(CoreFoundation)]
     internal static extern IntPtr CFStringCreateWithCString(IntPtr allocator, string value, uint encoding);
+
+    [DllImport(CoreFoundation)]
+    internal static extern IntPtr CFDictionaryCreate(
+        IntPtr allocator,
+        IntPtr[] keys,
+        IntPtr[] values,
+        nint numValues,
+        IntPtr keyCallBacks,
+        IntPtr valueCallBacks);
 
     [DllImport(CoreFoundation)]
     internal static extern IntPtr CFRunLoopGetCurrent();
@@ -98,6 +111,12 @@ internal static class MacNative
     [DllImport(CoreFoundation)]
     internal static extern void CFRelease(IntPtr cf);
 
+    internal static IntPtr GetBooleanTrue()
+    {
+        IntPtr library = NativeLibrary.Load(CoreFoundation);
+        IntPtr symbol = NativeLibrary.GetExport(library, "kCFBooleanTrue");
+        return Marshal.ReadIntPtr(symbol);
+    }
 
     [DllImport(LibSystem)]
     internal static extern int mach_timebase_info(out MachTimebaseInfo info);

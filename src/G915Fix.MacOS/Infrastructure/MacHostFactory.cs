@@ -40,7 +40,8 @@ internal static class MacHostFactory
         var viewModel = new DesktopMainViewModel(
             services,
             new DesktopHostOptions(GetVersion(), "G915 Fix"));
-        return new MacHost(viewModel, runtime);
+        var permissionsViewModel = new DesktopPermissionsViewModel(permissions);
+        return new MacHost(viewModel, permissionsViewModel, runtime);
     }
 
     private static void EnsureBaseConfiguration(string path, string diagnosticPath)
@@ -67,9 +68,13 @@ internal static class MacHostFactory
             : new Version(0, 1, 0);
 }
 
-internal sealed class MacHost(DesktopMainViewModel viewModel, MacInputFilterRuntime runtime) : IDisposable
+internal sealed class MacHost(
+    DesktopMainViewModel viewModel,
+    DesktopPermissionsViewModel permissionsViewModel,
+    MacInputFilterRuntime runtime) : IDisposable
 {
     public DesktopMainViewModel ViewModel { get; } = viewModel;
+    public DesktopPermissionsViewModel PermissionsViewModel { get; } = permissionsViewModel;
 
     public void Dispose()
     {

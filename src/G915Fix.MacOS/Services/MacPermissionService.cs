@@ -7,7 +7,8 @@ internal sealed class MacPermissionService : IPermissionService
 {
     public const string AccessibilityPermissionId = "macos.accessibility";
     public const string InputMonitoringPermissionId = "macos.input-monitoring";
-    private const string PrivacySettingsUri = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+    private const string AccessibilitySettingsUri = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+    private const string InputMonitoringSettingsUri = "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent";
 
     public Task<IReadOnlyList<PermissionRequirement>> GetRequiredPermissionsAsync(CancellationToken cancellationToken = default)
     {
@@ -42,7 +43,7 @@ internal sealed class MacPermissionService : IPermissionService
         return Task.FromResult(new PermissionRequestResult(
             permission,
             permission is not null,
-            permission?.Status == PermissionStatus.Granted ? null : PrivacySettingsUri,
+            permission?.Status == PermissionStatus.Granted ? null : GetSettingsUri(permissionId),
             permission?.Message));
     }
 
@@ -79,25 +80,59 @@ internal sealed class MacPermissionService : IPermissionService
 
     private static PermissionRequirement RequestAccessibility()
     {
-        // The documented Accessibility request API accepts a CFDictionary. Avalonia
-        // does not ship Objective-C bindings, so open the exact System Settings pane
-        // rather than fabricating an undocumented prompt dictionary.
-        _ = TryOpenSettings();
+        _ = RequestAccessibilityPrompt();
+        // TCC can suppress a prompt after a previous denial. Opening the exact pane
+        // is the reliable fallback and also gives the user a visible way to finish.
+        _ = TryOpenSettings(AccessibilitySettingsUri);
         return DescribeAccessibility() with { RequiredAction = PermissionAction.CompleteManualSetup };
     }
 
     private static PermissionRequirement RequestInputMonitoring()
     {
         _ = MacNative.CGRequestListenEventAccess();
-        _ = TryOpenSettings();
+        // CGRequestListenEventAccess prompts where macOS permits it. It does not
+        // report whether TCC suppressed a previously rejected prompt, so provide
+        // the nearest System Settings view as the fallback path.
+        _ = TryOpenSettings(InputMonitoringSettingsUri);
         return DescribeInputMonitoring() with { RequiredAction = PermissionAction.CompleteManualSetup };
     }
 
-    private static bool TryOpenSettings()
+    private static bool RequestAccessibilityPrompt()
+    {
+        IntPtr key = MacNative.CFStringCreateWithCString(IntPtr.Zero, "AXTrustedCheckOptionPrompt", MacNative.Utf8StringEncoding);
+        if (key == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        IntPtr options = IntPtr.Zero;
+        try
+        {
+            options = MacNative.CFDictionaryCreate(
+                IntPtr.Zero,
+                [key],
+                [MacNative.GetBooleanTrue()],
+                1,
+                IntPtr.Zero,
+                IntPtr.Zero);
+            return options != IntPtr.Zero && MacNative.AXIsProcessTrustedWithOptions(options);
+        }
+        finally
+        {
+            if (options != IntPtr.Zero) MacNative.CFRelease(options);
+            MacNative.CFRelease(key);
+        }
+    }
+
+    private static string GetSettingsUri(string permissionId) => permissionId == InputMonitoringPermissionId
+        ? InputMonitoringSettingsUri
+        : AccessibilitySettingsUri;
+
+    private static bool TryOpenSettings(string settingsUri)
     {
         try
         {
-            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("open", PrivacySettingsUri)
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("open", settingsUri)
             {
                 UseShellExecute = false,
                 CreateNoWindow = true
