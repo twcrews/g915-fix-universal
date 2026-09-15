@@ -8,11 +8,11 @@ The original project can be browsed at the public GitHub repo called `lucduguays
 
 ## Guidance for Agents
 
-- Preserve existing behavior unless a task explicitly requires changing it.
 - Prefer changes that move the project toward platform-agnostic design.
 - When adding or modifying functionality, consider Windows, macOS, and Linux compatibility.
 - Avoid introducing platform-specific assumptions unless they are isolated behind clear abstractions.
 - Update documentation when behavior or platform support changes.
+- After making a change, commit and push. Never force push or perform any destructive operation against the remote.
 
 ## Architectural Decisions
 
