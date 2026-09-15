@@ -67,7 +67,8 @@ Closing the settings window hides it and leaves the menu-bar app running. Use
 **Quit G915 Fix** from the menu-bar menu to stop the runtime and exit. The
 **Toggle autostart** control creates only the app-owned
 `~/Library/LaunchAgents/com.twcrews.g915fix.plist`; test it only after placing
-the bundle somewhere permanent, such as `/Applications`.
+the bundle somewhere permanent, such as `/Applications`. Enabling it takes effect
+at the next login and does not relaunch the app in the current session.
 
 ## Manual smoke checks
 
@@ -77,6 +78,8 @@ the bundle somewhere permanent, such as `/Applications`.
   key is held must not create a delayed key-up afterward.
 - Revoke either TCC permission and verify **Initialize** reports `PermissionRequired`
   rather than claiming the filter is active.
+- Enable autostart and verify the running app is not relaunched; after signing out
+  and back in, verify exactly one G915 Fix instance starts.
 - Test a password field and confirm the app fails open rather than blocking input.
 - Test the bundle independently on both `osx-arm64` and `osx-x64` before release.
 

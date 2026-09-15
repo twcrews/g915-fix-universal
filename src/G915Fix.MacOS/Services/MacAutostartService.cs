@@ -52,7 +52,9 @@ internal sealed class MacAutostartService : IAutostartService
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_agentPath)!);
             await File.WriteAllTextAsync(_agentPath, BuildPlist(), cancellationToken).ConfigureAwait(false);
-            await LaunchCtlAsync("bootstrap", $"gui/{GetUserId()}", _agentPath, cancellationToken).ConfigureAwait(false);
+            // launchd loads user LaunchAgents at the next login. Do not bootstrap
+            // this job now: RunAtLoad would start a second copy of the app in the
+            // current session.
             return new AutostartRegistration(AutostartStatus.Enabled, "G915 Fix will start at your next login.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
