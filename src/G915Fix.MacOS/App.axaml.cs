@@ -31,8 +31,10 @@ public partial class App : Application
         {
             _host = MacHostFactory.Create();
             _host.ViewModel.PermissionsWindowRequested += OnPermissionsWindowRequested;
+            // This resident app starts from the menu bar. Do not assign a main
+            // window to the desktop lifetime, which would show it at launch.
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _window = new MainWindow { DataContext = _host.ViewModel };
-            desktop.MainWindow = _window;
             CreateMenuBarIcon(desktop);
             desktop.Exit += (_, _) =>
             {

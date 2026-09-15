@@ -1,9 +1,11 @@
 # macOS local testing
 
 `G915Fix.MacOS` is an unsigned, non-sandboxed Avalonia menu-bar application for
-macOS 13 (Ventura) or later. It uses a CoreGraphics event tap to suppress input,
-so it cannot filter while macOS Secure Input is active (for example, many password
-fields). It does not currently implement automatic game-profile switching.
+macOS 13 (Ventura) or later. It starts as a menu-bar utility; open the settings
+window manually with **All settings...** from its menu. It uses a CoreGraphics event
+tap to suppress input, so it cannot filter while macOS Secure Input is active (for
+example, many password fields). It does not currently implement automatic
+game-profile switching.
 
 ## Prerequisites
 
