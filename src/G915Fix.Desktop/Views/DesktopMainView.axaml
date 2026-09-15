@@ -36,6 +36,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <ToggleSwitch Content="Auto-switch profiles for games" IsChecked="{Binding AutoSwitchProfiles}" />
+          <Button Content="Update games list..." Command="{Binding UpdateGamesListCommand}" />
         </StackPanel>
       </Border>
 

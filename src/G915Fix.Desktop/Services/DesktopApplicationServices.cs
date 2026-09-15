@@ -1,5 +1,6 @@
 using G915Fix.Core.Autostart;
 using G915Fix.Core.Input;
+using G915Fix.Core.Games;
 using G915Fix.Core.Heatmap;
 using G915Fix.Core.Notifications;
 using G915Fix.Core.Permissions;
@@ -21,7 +22,8 @@ public sealed class DesktopApplicationServices
         IAutostartService autostart,
         IUpdateChecker? updateChecker = null,
         IUserNotificationService? notifications = null,
-        IHeatmapReportService? heatmapReports = null)
+        IHeatmapReportService? heatmapReports = null,
+        IGameListUpdater? gameListUpdater = null)
     {
         InputRuntime = inputRuntime ?? throw new ArgumentNullException(nameof(inputRuntime));
         Profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
@@ -30,6 +32,7 @@ public sealed class DesktopApplicationServices
         UpdateChecker = updateChecker;
         Notifications = notifications;
         HeatmapReports = heatmapReports;
+        GameListUpdater = gameListUpdater;
     }
 
     public IInputFilterRuntime InputRuntime { get; }
@@ -39,6 +42,7 @@ public sealed class DesktopApplicationServices
     public IUpdateChecker? UpdateChecker { get; }
     public IUserNotificationService? Notifications { get; }
     public IHeatmapReportService? HeatmapReports { get; }
+    public IGameListUpdater? GameListUpdater { get; }
 }
 
 /// <summary>Host-specific presentation values that do not belong in Core configuration.</summary>

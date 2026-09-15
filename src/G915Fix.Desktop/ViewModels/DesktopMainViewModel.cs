@@ -3,6 +3,7 @@ using System.Windows.Input;
 using G915Fix.Core.Autostart;
 using G915Fix.Core.Configuration;
 using G915Fix.Core.Input;
+using G915Fix.Core.Games;
 using G915Fix.Core.Heatmap;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
@@ -54,6 +55,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
         OpenPermissionsCommand = new AsyncCommand(OpenPermissionsAsync);
         OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
+        UpdateGamesListCommand = new AsyncCommand(UpdateGamesListAsync, () => !IsBusy && _services.GameListUpdater is not null);
 
         _services.InputRuntime.StatusChanged += OnRuntimeStatusChanged;
     }
@@ -72,6 +74,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand CheckForUpdatesCommand { get; }
     public ICommand OpenPermissionsCommand { get; }
     public ICommand OpenHeatmapCommand { get; }
+    public ICommand UpdateGamesListCommand { get; }
 
     /// <summary>Raised when the host should show its platform-specific permissions UI.</summary>
     public event EventHandler? PermissionsWindowRequested;
@@ -327,6 +330,22 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
+    public async Task UpdateGamesListAsync()
+    {
+        if (_services.GameListUpdater is null)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            GameListUpdateResult result = await _services.GameListUpdater.UpdateAsync();
+            Message = result.Message ?? (result.Status == GameListUpdateStatus.Updated
+                ? $"Game list updated with {result.GameCount} games."
+                : "The game list is already current.");
+        });
+    }
+
     public Task OpenPermissionsAsync()
     {
         PermissionsWindowRequested?.Invoke(this, EventArgs.Empty);
@@ -484,7 +503,8 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      InitializeCommand, StartCommand, StopCommand, SaveCommand,
-                     ActivateProfileCommand, CheckForUpdatesCommand, OpenPermissionsCommand, OpenHeatmapCommand
+                     ActivateProfileCommand, CheckForUpdatesCommand, OpenPermissionsCommand, OpenHeatmapCommand,
+                     UpdateGamesListCommand
                  })
         {
             if (command is AsyncCommand asyncCommand)

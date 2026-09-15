@@ -44,8 +44,8 @@ appearance and `res/app-icon-white.png` in dark appearance.
 
 1. On launch, **Permissions Required** opens automatically until both
    **Accessibility** and **Input Monitoring** are allowed. It is also available
-   at any time from the menu-bar **Permissions...** item or the main window's
-   **Open permissions** button.
+   at any time from **All settings...** in the menu-bar menu, then the main
+   window's **Open permissions** button.
 2. Click each permission button marked **Not allowed**. macOS displays its
    consent prompt when it can. If a prompt was previously rejected or does not
    appear, click that permission again to open the matching Privacy & Security
@@ -61,7 +61,10 @@ The app stores `config.json` and JSON profiles in
 Use **Open diagnostic heatmap** in the Application section to generate a
 self-contained HTML file alongside the log and open it in the default browser.
 It opens an empty report when no diagnostics have been recorded yet; enable
-Diagnostics before filtering to populate it.
+Diagnostics before filtering to populate it. The menu-bar menu also provides
+**Filter keyboard**, **Filter mouse**, **Profile auto-switch**, **Track events**,
+**Update games list...**, and **Event heatmap...** for the corresponding common
+settings and actions; use **All settings...** for the complete settings window.
 
 Closing the settings window hides it and leaves the menu-bar app running. Use
 **Quit G915 Fix** from the menu-bar menu to stop the runtime and exit. The

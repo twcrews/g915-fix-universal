@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -6,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using G915Fix.Desktop.ViewModels;
 using G915Fix.MacOS.Infrastructure;
 
 namespace G915Fix.MacOS;
@@ -16,6 +18,10 @@ public partial class App : Application
     private MainWindow? _window;
     private PermissionsWindow? _permissionsWindow;
     private TrayIcon? _tray;
+    private NativeMenuItem? _filterKeyboard;
+    private NativeMenuItem? _filterMouse;
+    private NativeMenuItem? _profileAutoSwitch;
+    private NativeMenuItem? _trackEvents;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -28,7 +34,14 @@ public partial class App : Application
             _window = new MainWindow { DataContext = _host.ViewModel };
             desktop.MainWindow = _window;
             CreateMenuBarIcon(desktop);
-            desktop.Exit += (_, _) => _host.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                if (_host is not null)
+                {
+                    _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                    _host.Dispose();
+                }
+            };
             ActualThemeVariantChanged += (_, _) => UpdateMenuBarIcon();
             Dispatcher.UIThread.Post(async () =>
             {
@@ -45,10 +58,28 @@ public partial class App : Application
 
     private void CreateMenuBarIcon(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var open = new NativeMenuItem("Open G915 Fix");
-        open.Click += (_, _) => ShowWindow();
-        var permissions = new NativeMenuItem("Permissions...");
-        permissions.Click += (_, _) => ShowPermissionsWindow();
+        DesktopMainViewModel viewModel = _host?.ViewModel
+            ?? throw new InvalidOperationException("The application host is unavailable.");
+        _filterKeyboard = CreateToggleMenuItem("Filter keyboard", viewModel.KeyboardEnabled,
+            isEnabled => viewModel.KeyboardEnabled = isEnabled);
+        _filterMouse = CreateToggleMenuItem("Filter mouse", viewModel.MouseEnabled,
+            isEnabled => viewModel.MouseEnabled = isEnabled);
+        _profileAutoSwitch = CreateToggleMenuItem("Profile auto-switch", viewModel.AutoSwitchProfiles,
+            isEnabled => viewModel.AutoSwitchProfiles = isEnabled);
+        _trackEvents = CreateToggleMenuItem("Track events", viewModel.DiagnosticsEnabled,
+            isEnabled => viewModel.DiagnosticsEnabled = isEnabled);
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        var updateGames = new NativeMenuItem("Update games list...")
+        {
+            Command = viewModel.UpdateGamesListCommand
+        };
+        var heatmap = new NativeMenuItem("Event heatmap...")
+        {
+            Command = viewModel.OpenHeatmapCommand
+        };
+        var settings = new NativeMenuItem("All settings...");
+        settings.Click += (_, _) => ShowWindow();
         var quit = new NativeMenuItem("Quit G915 Fix");
         quit.Click += (_, _) =>
         {
@@ -56,10 +87,18 @@ public partial class App : Application
             if (_permissionsWindow is not null) _permissionsWindow.AllowClose = true;
             desktop.Shutdown();
         };
+
         var menu = new NativeMenu();
-        menu.Items.Add(open);
-        menu.Items.Add(permissions);
+        menu.Items.Add(_filterKeyboard);
+        menu.Items.Add(_filterMouse);
         menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(_profileAutoSwitch);
+        menu.Items.Add(updateGames);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(_trackEvents);
+        menu.Items.Add(heatmap);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(settings);
         menu.Items.Add(quit);
 
         _tray = new TrayIcon
@@ -69,6 +108,41 @@ public partial class App : Application
         };
         TrayIcon.SetIcons(this, new TrayIcons { _tray });
         UpdateMenuBarIcon();
+    }
+
+    private static NativeMenuItem CreateToggleMenuItem(string header, bool isChecked, Action<bool> setValue)
+    {
+        var item = new NativeMenuItem(header)
+        {
+            ToggleType = NativeMenuItemToggleType.CheckBox,
+            IsChecked = isChecked
+        };
+        item.Click += (_, _) => setValue(item.IsChecked == true);
+        return item;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_host is null)
+        {
+            return;
+        }
+
+        switch (e.PropertyName)
+        {
+            case nameof(DesktopMainViewModel.KeyboardEnabled):
+                _filterKeyboard?.IsChecked = _host.ViewModel.KeyboardEnabled;
+                break;
+            case nameof(DesktopMainViewModel.MouseEnabled):
+                _filterMouse?.IsChecked = _host.ViewModel.MouseEnabled;
+                break;
+            case nameof(DesktopMainViewModel.AutoSwitchProfiles):
+                _profileAutoSwitch?.IsChecked = _host.ViewModel.AutoSwitchProfiles;
+                break;
+            case nameof(DesktopMainViewModel.DiagnosticsEnabled):
+                _trackEvents?.IsChecked = _host.ViewModel.DiagnosticsEnabled;
+                break;
+        }
     }
 
     private void ShowWindow()

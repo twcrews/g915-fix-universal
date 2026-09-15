@@ -34,13 +34,13 @@ A low-level keyboard hook inspects every key event and discards repeats that arr
 - **Block double presses** (`BlockRepress`, default), blocks the spurious *re-press*, so one tap produces one character. Ideal for normal typing.
 - **Protect held keys** (`BlockRelease`), withholds the spurious *release*, so a held modifier or movement key stays down through a bounce. Ideal for `Ctrl`/`Shift` shortcuts and gaming, at the cost of a few milliseconds of release latency.
 
-Switch between them live from **Tray → Filter mode**; the choice is saved and applied immediately.
+Switch between them live from the **Mode** setting in the settings window; the choice is saved and applied immediately.
 
 ### Mouse-button debouncing
 
 A worn or chattering mouse switch turns a single physical click into a phantom double-click. The same idea that fixes the keyboard fixes the mouse: an optional low-level mouse hook drops a button press that arrives within a threshold of that button's previous release, so one click stays one click. It covers the left, right, middle, and both side (X1/X2) buttons, and is **off by default** so keyboard-only users are unaffected.
 
-Turn it on from **Tray → Enable mouse click debounce** (saved to `config.json`), tune the window with `MouseMinRepeatIntervalMs`, and exclude specific buttons with `ExcludedMouseButtons`. The default **50 ms** window sits well below an intentional double-click, so real double-clicks are preserved.
+Turn it on from **Filter mouse** in the menu-bar menu (saved to `config.json`), tune the window with `MouseMinRepeatIntervalMs`, and exclude specific buttons with `ExcludedMouseButtons`. The default **50 ms** window sits well below an intentional double-click, so real double-clicks are preserved.
 
 > [!NOTE]
 > The debounce is **generic, not mouse-specific.** It works at the OS input layer on any standard pointing device's button events, regardless of make, model, or driver. It is not tied to a particular mouse, and there is nothing to configure per device.
@@ -55,7 +55,7 @@ A **`gaming.json`** profile ships in the box, tuned for movement:
 - Tight **12 ms** per-key release on **W/A/S/D and crouch (right Ctrl)** so stops stay razor-sharp, while tapped action keys keep the full protective threshold.
 - Elevated-window pop-ups off; mouse debouncing left off so it can't swallow rapid clicks.
 
-Activate it from **Tray → Profile → gaming**.
+Activate it from the profile selector in the settings window.
 
 > **Reality check:** see [Gaming and anti-cheat](docs/USAGE.md#gaming-and-anti-cheat) for what a
 > filter can and cannot do in games, kernel-level anti-cheat and Raw Input can keep keystrokes away
@@ -63,9 +63,9 @@ Activate it from **Tray → Profile → gaming**.
 
 ### Auto-switch profiles for games
 
-Let a game pick your profile for you. Turn on **Tray → Game profile switching → Auto-switch profiles for games** and the app watches for a running game and temporarily activates a matching profile, reverting to your base profile the moment the game closes. World of Warcraft maps to the **WoW** profile out of the box; every other detected game uses `DefaultGameProfile` (`gaming` by default). You can still pick a profile by hand while a game is running, that manual choice holds until the game closes and is not saved as your startup default. The status line in the submenu shows what is in effect.
+Let a game pick your profile for you. Turn on **Profile auto-switch** in the menu-bar menu and the app watches for a running game and temporarily activates a matching profile, reverting to your base profile the moment the game closes. World of Warcraft maps to the **WoW** profile out of the box; every other detected game uses `DefaultGameProfile` (`gaming` by default). You can still pick a profile by hand while a game is running, that manual choice holds until the game closes and is not saved as your startup default. The status line in the submenu shows what is in effect.
 
-Which executables count as "a game" comes from **Discord's public detectable-games list**. The network-isolated `G915Fix.GameListUpdater` companion downloads the list and writes `games.txt`; the resident filter never makes that request itself. The updater uses HTTP cache validators when available, so later checks can skip re-downloading unchanged data. Its default OS filter follows the current host (`win32`, `linux`, or `darwin`), rather than assuming Windows. Configure profile mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`, and `DefaultGameProfile` in `config.json`.
+Which executables count as "a game" comes from **Discord's public detectable-games list**. **Update games list...** in the menu-bar menu or settings window downloads the list and writes `games.txt`. The updater uses HTTP cache validators when available, so later checks can skip re-downloading unchanged data. Its default OS filter follows the current host (`win32`, `linux`, or `darwin`), rather than assuming Windows. Configure profile mapping with `AutoSwitchProfilesForGames`, `GameProfileMap`, and `DefaultGameProfile` in `config.json`.
 
 Advanced/manual updater usage:
 
@@ -206,7 +206,7 @@ Everything is controlled by `config.json` next to the executable. Full reference
 | `MouseMinRepeatIntervalMs` | `50.0` | Mouse clicks faster than this are treated as chatter. |
 | `ExcludedMouseButtons` | `[]` | Mouse buttons never filtered (`Left`, `Right`, `Middle`, `X1`, `X2`). |
 
-The **Filter mode**, **Enable mouse click debounce**, and **Disable nag popups** tray toggles write straight back to this file, so the GUI and the config file never disagree.
+The filtering and diagnostic toggles in the settings window and menu-bar menu write straight back to this file, so the GUI and the config file never disagree.
 
 ## Documentation
 

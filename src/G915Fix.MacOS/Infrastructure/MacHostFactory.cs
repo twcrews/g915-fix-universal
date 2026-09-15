@@ -1,4 +1,5 @@
 using G915Fix.Core.Configuration;
+using G915Fix.Core.Games;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
 using G915Fix.Desktop.Services;
@@ -36,7 +37,15 @@ internal static class MacHostFactory
             string? path = profiles.ActiveConfig?.Diagnostics?.LogPath;
             return string.IsNullOrWhiteSpace(path) ? defaultDiagnosticPath : path;
         });
-        var services = new DesktopApplicationServices(runtime, profiles, permissions, autostart, updates, heatmapReports: heatmaps);
+        string gameListPath = Path.Combine(configDirectory, "games.txt");
+        var gameListUpdater = new DiscordGameListUpdater(
+            new HttpClient(),
+            new FileGameListStore(gameListPath, GameListPlatform.MacOS),
+            cacheStore: new FileGameListCacheStore(gameListPath + ".cache.json"));
+        var services = new DesktopApplicationServices(
+            runtime, profiles, permissions, autostart, updates,
+            heatmapReports: heatmaps,
+            gameListUpdater: gameListUpdater);
         var viewModel = new DesktopMainViewModel(
             services,
             new DesktopHostOptions(GetVersion(), "G915 Fix"));
