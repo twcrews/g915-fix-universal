@@ -9,8 +9,7 @@ fields). It does not currently implement automatic game-profile switching.
 
 - macOS on Apple Silicon or Intel
 - .NET SDK 10
-- Xcode Command Line Tools (`sips`, `iconutil`, and `plutil`) when creating a
-  local `.app` bundle
+- Xcode Command Line Tools (`actool`) when creating a local `.app` bundle
 
 ## Build and run
 
@@ -36,10 +35,10 @@ cp -R "artifacts/macos/osx-arm64/G915 Fix.app" /Applications/
 open "/Applications/G915 Fix.app"
 ```
 
-The bundle script derives `app-icon.icns` from the source-of-truth
-`res/app-icon.icon/` asset and copies that authored asset into the bundle. The
-menu-bar icon uses `res/app-icon-black.png` in light appearance and
-`res/app-icon-white.png` in dark appearance.
+The bundle compiles the source-of-truth `res/app-icon.icon/` Icon Composer
+asset directly with `actool`; it does not construct an icon from the asset's
+individual files. The menu-bar icon uses `res/app-icon-black.png` in light
+appearance and `res/app-icon-white.png` in dark appearance.
 
 ## Grant input permissions
 
