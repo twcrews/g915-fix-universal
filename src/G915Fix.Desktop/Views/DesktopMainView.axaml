@@ -3,6 +3,13 @@
              x:Class="G915Fix.Desktop.Views.DesktopMainView">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="24" Spacing="16" MaxWidth="760">
+      <Border Classes="permission-warning" IsVisible="{Binding HasMissingPermissions}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <TextBlock Text="{Binding MissingPermissionsMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Open Permissions" Command="{Binding OpenPermissionsCommand}" />
+        </Grid>
+      </Border>
+
       <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
         <TextBlock Text="{Binding ApplicationName}" Classes="title" />
         <TextBlock Grid.Column="1" Text="{Binding VersionText, StringFormat=Version {0}}" VerticalAlignment="Center" />
@@ -55,8 +62,6 @@
           <TextBlock Text="{Binding UpdateResult.Message}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
-
-      <Button Content="Open permissions" Command="{Binding OpenPermissionsCommand}" />
 
       <ItemsControl ItemsSource="{Binding ConfigurationWarnings}">
         <ItemsControl.ItemTemplate>

@@ -38,6 +38,8 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private bool _isInitialized;
     private bool _isBusy;
     private bool _canToggleInputFiltering;
+    private bool _hasMissingPermissions;
+    private string? _missingPermissionsMessage;
 
     public DesktopMainViewModel(
         DesktopApplicationServices services,
@@ -156,6 +158,20 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     {
         get => _canToggleInputFiltering;
         private set => SetProperty(ref _canToggleInputFiltering, value);
+    }
+
+    /// <summary>Whether the last permission check found one or more unmet requirements.</summary>
+    public bool HasMissingPermissions
+    {
+        get => _hasMissingPermissions;
+        private set => SetProperty(ref _hasMissingPermissions, value);
+    }
+
+    /// <summary>Describes the permissions that must be granted before filtering can run.</summary>
+    public string? MissingPermissionsMessage
+    {
+        get => _missingPermissionsMessage;
+        private set => SetProperty(ref _missingPermissionsMessage, value);
     }
 
     /// <summary>Whether platform permission currently allows diagnostic input capture.</summary>
@@ -392,8 +408,17 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private async Task RefreshInputFilteringPermissionAsyncCore()
     {
         IReadOnlyList<PermissionRequirement> requirements = await _services.Permissions.GetRequiredPermissionsAsync();
-        CanToggleInputFiltering = requirements.All(requirement =>
-            requirement.Status is PermissionStatus.Granted or PermissionStatus.NotRequired);
+        PermissionRequirement[] missingPermissions = requirements
+            .Where(requirement => requirement.Status is not (PermissionStatus.Granted or PermissionStatus.NotRequired))
+            .ToArray();
+        HasMissingPermissions = missingPermissions.Length > 0;
+        MissingPermissionsMessage = missingPermissions.Length switch
+        {
+            0 => null,
+            1 => $"{missingPermissions[0].DisplayName} permission is required. Open Permissions to grant it.",
+            _ => $"Required permissions are missing: {string.Join(", ", missingPermissions.Select(permission => permission.DisplayName))}. Open Permissions to grant them."
+        };
+        CanToggleInputFiltering = !HasMissingPermissions;
         OnPropertyChanged(nameof(CanToggleDiagnostics));
         if (CanToggleInputFiltering)
         {

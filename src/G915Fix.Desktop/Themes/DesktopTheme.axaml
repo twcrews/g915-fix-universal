@@ -24,6 +24,14 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="Padding" Value="14,10" />
   </Style>
+  <Style Selector="Border.permission-warning">
+    <Setter Property="Background" Value="#FFF6D365" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="16,12" />
+  </Style>
+  <Style Selector="Border.permission-warning TextBlock">
+    <Setter Property="Foreground" Value="#3D3000" />
+  </Style>
   <Style Selector="TextBlock.warning">
     <Setter Property="Foreground" Value="{DynamicResource SystemControlWarningTextForegroundBrush}" />
   </Style>
