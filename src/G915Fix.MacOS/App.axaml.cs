@@ -24,6 +24,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _host = MacHostFactory.Create();
+            _host.ViewModel.PermissionsWindowRequested += OnPermissionsWindowRequested;
             _window = new MainWindow { DataContext = _host.ViewModel };
             desktop.MainWindow = _window;
             CreateMenuBarIcon(desktop);
@@ -81,6 +82,8 @@ public partial class App : Application
         _window.WindowState = WindowState.Normal;
         _window.Activate();
     }
+
+    private void OnPermissionsWindowRequested(object? sender, EventArgs e) => ShowPermissionsWindow();
 
     private void ShowPermissionsWindow()
     {

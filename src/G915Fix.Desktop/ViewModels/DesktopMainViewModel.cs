@@ -4,7 +4,6 @@ using G915Fix.Core.Autostart;
 using G915Fix.Core.Configuration;
 using G915Fix.Core.Input;
 using G915Fix.Core.Heatmap;
-using G915Fix.Core.Permissions;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
 using G915Fix.Desktop.Infrastructure;
@@ -24,7 +23,10 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _synchronizationContext;
     private AppConfiguration _configuration = new();
     private ProfileDescriptor? _selectedProfile;
-    private PermissionRequirement? _selectedPermission;
+    private bool _suppressProfileActivation;
+    private bool _configurationUpdateQueued;
+    private int _configurationRevision;
+    private readonly SemaphoreSlim _operationLock = new(1, 1);
     private InputFilterRuntimeSnapshot _runtime = InputFilterRuntimeSnapshot.Inactive;
     private AutostartRegistration? _autostart;
     private UpdateCheckResult? _updateResult;
@@ -50,7 +52,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         ActivateProfileCommand = new AsyncCommand(ActivateSelectedProfileAsync, () => !IsBusy && SelectedProfile is not null);
         ToggleAutostartCommand = new AsyncCommand(ToggleAutostartAsync, () => !IsBusy && Autostart?.Status is AutostartStatus.Enabled or AutostartStatus.Disabled);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
-        RequestPermissionCommand = new AsyncCommand(RequestSelectedPermissionAsync, () => !IsBusy && SelectedPermission is not null);
+        OpenPermissionsCommand = new AsyncCommand(OpenPermissionsAsync);
         OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
 
         _services.InputRuntime.StatusChanged += OnRuntimeStatusChanged;
@@ -60,7 +62,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public string VersionText => _hostOptions.CurrentVersion.ToString();
     public IReadOnlyList<string> KeyboardModes { get; } = Enum.GetNames<KeyboardDebounceMode>();
     public ObservableCollection<ProfileDescriptor> Profiles { get; } = [];
-    public ObservableCollection<PermissionRequirement> Permissions { get; } = [];
     public ObservableCollection<ConfigurationWarning> ConfigurationWarnings { get; } = [];
 
     public ICommand InitializeCommand { get; }
@@ -70,8 +71,11 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand ActivateProfileCommand { get; }
     public ICommand ToggleAutostartCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
-    public ICommand RequestPermissionCommand { get; }
+    public ICommand OpenPermissionsCommand { get; }
     public ICommand OpenHeatmapCommand { get; }
+
+    /// <summary>Raised when the host should show its platform-specific permissions UI.</summary>
+    public event EventHandler? PermissionsWindowRequested;
 
     public bool IsInitialized
     {
@@ -110,18 +114,10 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _selectedProfile, value))
             {
                 RefreshCommands();
-            }
-        }
-    }
-
-    public PermissionRequirement? SelectedPermission
-    {
-        get => _selectedPermission;
-        set
-        {
-            if (SetProperty(ref _selectedPermission, value))
-            {
-                RefreshCommands();
+                if (!_suppressProfileActivation && value is not null)
+                {
+                    _ = ActivateSelectedProfileAsync();
+                }
             }
         }
     }
@@ -129,49 +125,49 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public bool KeyboardEnabled
     {
         get => _configuration.Keyboard.Enabled;
-        set { _configuration.Keyboard.Enabled = value; OnPropertyChanged(); }
+        set { _configuration.Keyboard.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public bool MouseEnabled
     {
         get => _configuration.Mouse.Enabled;
-        set { _configuration.Mouse.Enabled = value; OnPropertyChanged(); }
+        set { _configuration.Mouse.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public string KeyboardMode
     {
         get => _configuration.Keyboard.Mode;
-        set { _configuration.Keyboard.Mode = value; OnPropertyChanged(); }
+        set { _configuration.Keyboard.Mode = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public double KeyboardMinimumRepeatIntervalMs
     {
         get => _configuration.Keyboard.MinimumRepeatIntervalMs;
-        set { _configuration.Keyboard.MinimumRepeatIntervalMs = value; OnPropertyChanged(); }
+        set { _configuration.Keyboard.MinimumRepeatIntervalMs = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public double MouseMinimumRepeatIntervalMs
     {
         get => _configuration.Mouse.MinimumRepeatIntervalMs;
-        set { _configuration.Mouse.MinimumRepeatIntervalMs = value; OnPropertyChanged(); }
+        set { _configuration.Mouse.MinimumRepeatIntervalMs = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public bool DiagnosticsEnabled
     {
         get => _configuration.Diagnostics.Enabled;
-        set { _configuration.Diagnostics.Enabled = value; OnPropertyChanged(); }
+        set { _configuration.Diagnostics.Enabled = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public bool AutoSwitchProfiles
     {
         get => _configuration.Games.AutoSwitchProfiles;
-        set { _configuration.Games.AutoSwitchProfiles = value; OnPropertyChanged(); }
+        set { _configuration.Games.AutoSwitchProfiles = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public bool CheckForUpdates
     {
         get => _configuration.Updates.CheckForUpdates;
-        set { _configuration.Updates.CheckForUpdates = value; OnPropertyChanged(); }
+        set { _configuration.Updates.CheckForUpdates = value; OnPropertyChanged(); QueueConfigurationUpdate(); }
     }
 
     public async Task InitializeAsync()
@@ -182,7 +178,12 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             SetConfiguration(activation.ActiveConfiguration ?? new AppConfiguration());
             await RefreshHostStateAsync();
             IsInitialized = activation.Succeeded;
-            Message = activation.Message ?? (activation.Succeeded ? "Configuration loaded." : "Configuration could not be loaded.");
+            if (activation.Succeeded)
+            {
+                Runtime = await _services.InputRuntime.StartAsync(CompileConfiguration());
+            }
+
+            Message = activation.Message ?? (activation.Succeeded ? Runtime.Message ?? "Configuration loaded and filtering started." : "Configuration could not be loaded.");
         });
     }
 
@@ -295,25 +296,10 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
-    public async Task RequestSelectedPermissionAsync()
+    public Task OpenPermissionsAsync()
     {
-        if (SelectedPermission is null)
-        {
-            return;
-        }
-
-        await RunAsync(async () =>
-        {
-            PermissionRequestResult result = await _services.Permissions.RequestPermissionAsync(SelectedPermission.Id);
-            Message = result.Message ?? "Follow the macOS permission prompt, then initialize or start filtering again.";
-            IReadOnlyList<PermissionRequirement> permissions = await _services.Permissions.GetRequiredPermissionsAsync();
-            Permissions.Clear();
-            foreach (PermissionRequirement permission in permissions)
-            {
-                Permissions.Add(permission);
-            }
-            SelectedPermission = Permissions.FirstOrDefault(permission => permission.Id == SelectedPermission?.Id);
-        });
+        PermissionsWindowRequested?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
     }
 
     public void Dispose() => _services.InputRuntime.StatusChanged -= OnRuntimeStatusChanged;
@@ -327,17 +313,67 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             Profiles.Add(profile);
         }
 
-        SelectedProfile = Profiles.FirstOrDefault(profile => profile.IsDefault) ?? Profiles.FirstOrDefault();
+        SetSelectedProfileWithoutActivation(Profiles.FirstOrDefault(profile => profile.IsDefault) ?? Profiles.FirstOrDefault());
         Autostart = await _services.Autostart.GetRegistrationAsync();
+    }
 
-        IReadOnlyList<PermissionRequirement> permissions = await _services.Permissions.GetRequiredPermissionsAsync();
-        Permissions.Clear();
-        foreach (PermissionRequirement permission in permissions)
+    private void QueueConfigurationUpdate()
+    {
+        if (!IsInitialized)
         {
-            Permissions.Add(permission);
+            return;
         }
-        SelectedPermission = Permissions.FirstOrDefault(permission => permission.Status != PermissionStatus.Granted)
-            ?? Permissions.FirstOrDefault();
+
+        _configurationRevision++;
+        if (_configurationUpdateQueued)
+        {
+            return;
+        }
+
+        _configurationUpdateQueued = true;
+        _ = ApplyQueuedConfigurationUpdatesAsync();
+    }
+
+    private async Task ApplyQueuedConfigurationUpdatesAsync()
+    {
+        while (true)
+        {
+            int revision = _configurationRevision;
+            await RunAsync(async () =>
+            {
+                ConfigurationCompilationResult compilation = CompileConfiguration();
+                ConfigurationSaveResult save = await _services.Profiles.SaveActiveAsync(_configuration);
+                if (!save.Succeeded)
+                {
+                    Message = save.Error ?? "Could not save configuration.";
+                    return;
+                }
+
+                Runtime = Runtime.Status == InputFilterRuntimeStatus.Active
+                    ? await _services.InputRuntime.ApplyConfigurationAsync(compilation)
+                    : await _services.InputRuntime.StartAsync(compilation);
+                Message = Runtime.Message ?? "Configuration saved and applied.";
+            });
+
+            if (revision == _configurationRevision)
+            {
+                _configurationUpdateQueued = false;
+                return;
+            }
+        }
+    }
+
+    private void SetSelectedProfileWithoutActivation(ProfileDescriptor? profile)
+    {
+        _suppressProfileActivation = true;
+        try
+        {
+            SelectedProfile = profile;
+        }
+        finally
+        {
+            _suppressProfileActivation = false;
+        }
     }
 
     private ConfigurationCompilationResult CompileConfiguration()
@@ -384,11 +420,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
     private async Task RunAsync(Func<Task> action)
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
+        await _operationLock.WaitAsync();
         IsBusy = true;
         try
         {
@@ -401,6 +433,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         finally
         {
             IsBusy = false;
+            _operationLock.Release();
         }
     }
 
@@ -420,7 +453,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      InitializeCommand, StartCommand, StopCommand, SaveCommand,
-                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, RequestPermissionCommand,
+                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, OpenPermissionsCommand,
                      OpenHeatmapCommand
                  })
         {

@@ -17,32 +17,24 @@
             <TextBlock Text="Mode" VerticalAlignment="Center" />
             <ComboBox Grid.Column="1" ItemsSource="{Binding KeyboardModes}" SelectedItem="{Binding KeyboardMode}" />
             <TextBlock Grid.Row="1" Text="Minimum repeat interval (ms)" VerticalAlignment="Center" />
-            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding KeyboardMinimumRepeatIntervalMs}" />
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding KeyboardMinimumRepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
           </Grid>
           <ToggleSwitch Content="Enable mouse click debounce" IsChecked="{Binding MouseEnabled}" />
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
             <TextBlock Text="Mouse repeat interval (ms)" VerticalAlignment="Center" />
-            <TextBox Grid.Column="1" Text="{Binding MouseMinimumRepeatIntervalMs}" />
+            <TextBox Grid.Column="1" Text="{Binding MouseMinimumRepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
           </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Start" Command="{Binding StartCommand}" />
-            <Button Content="Stop" Command="{Binding StopCommand}" />
-            <Button Content="Save and apply" Command="{Binding SaveCommand}" />
-          </StackPanel>
         </StackPanel>
       </Border>
 
       <Border Classes="card">
         <StackPanel Spacing="12">
           <TextBlock Text="Profiles" Classes="section-title" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <Button Grid.Column="1" Content="Activate" Command="{Binding ActivateProfileCommand}" />
-          </Grid>
+          <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <ToggleSwitch Content="Auto-switch profiles for games" IsChecked="{Binding AutoSwitchProfiles}" />
         </StackPanel>
       </Border>
@@ -64,18 +56,7 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="card">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Permissions" Classes="section-title" />
-          <ComboBox ItemsSource="{Binding Permissions}" SelectedItem="{Binding SelectedPermission}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBlock Text="{Binding SelectedPermission.Message}" TextWrapping="Wrap" />
-          <Button Content="Grant permission / open settings" Command="{Binding RequestPermissionCommand}" />
-        </StackPanel>
-      </Border>
+      <Button Content="Open permissions" Command="{Binding OpenPermissionsCommand}" />
 
       <ItemsControl ItemsSource="{Binding ConfigurationWarnings}">
         <ItemsControl.ItemTemplate>
