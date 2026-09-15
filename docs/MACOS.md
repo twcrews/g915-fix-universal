@@ -65,7 +65,7 @@ Diagnostics before filtering to populate it.
 
 Closing the settings window hides it and leaves the menu-bar app running. Use
 **Quit G915 Fix** from the menu-bar menu to stop the runtime and exit. The
-**Toggle autostart** control creates only the app-owned
+**Start at login** toggle creates only the app-owned
 `~/Library/LaunchAgents/com.twcrews.g915fix.plist`; test it only after placing
 the bundle somewhere permanent, such as `/Applications`. Enabling it takes effect
 at the next login and does not relaunch the app in the current session.

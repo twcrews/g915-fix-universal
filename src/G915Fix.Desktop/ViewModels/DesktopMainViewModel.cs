@@ -29,6 +29,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private readonly SemaphoreSlim _operationLock = new(1, 1);
     private InputFilterRuntimeSnapshot _runtime = InputFilterRuntimeSnapshot.Inactive;
     private AutostartRegistration? _autostart;
+    private bool _autostartEnabled;
     private UpdateCheckResult? _updateResult;
     private string? _message;
     private bool _isInitialized;
@@ -50,7 +51,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         StopCommand = new AsyncCommand(StopAsync, () => !IsBusy && Runtime.Status != InputFilterRuntimeStatus.Inactive);
         SaveCommand = new AsyncCommand(SaveAsync, () => !IsBusy && IsInitialized);
         ActivateProfileCommand = new AsyncCommand(ActivateSelectedProfileAsync, () => !IsBusy && SelectedProfile is not null);
-        ToggleAutostartCommand = new AsyncCommand(ToggleAutostartAsync, () => !IsBusy && Autostart?.Status is AutostartStatus.Enabled or AutostartStatus.Disabled);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
         OpenPermissionsCommand = new AsyncCommand(OpenPermissionsAsync);
         OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
@@ -69,7 +69,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand StopCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand ActivateProfileCommand { get; }
-    public ICommand ToggleAutostartCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
     public ICommand OpenPermissionsCommand { get; }
     public ICommand OpenHeatmapCommand { get; }
@@ -96,6 +95,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _isBusy, value))
             {
+                OnPropertyChanged(nameof(CanToggleAutostart));
                 RefreshCommands();
             }
         }
@@ -103,8 +103,39 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
     public string? Message { get => _message; private set => SetProperty(ref _message, value); }
     public InputFilterRuntimeSnapshot Runtime { get => _runtime; private set => SetProperty(ref _runtime, value); }
-    public AutostartRegistration? Autostart { get => _autostart; private set => SetProperty(ref _autostart, value); }
+    public AutostartRegistration? Autostart
+    {
+        get => _autostart;
+        private set
+        {
+            if (SetProperty(ref _autostart, value))
+            {
+                SetProperty(ref _autostartEnabled, value?.IsEnabled == true, nameof(AutostartEnabled));
+                OnPropertyChanged(nameof(CanToggleAutostart));
+            }
+        }
+    }
     public UpdateCheckResult? UpdateResult { get => _updateResult; private set => SetProperty(ref _updateResult, value); }
+
+    public bool AutostartEnabled
+    {
+        get => _autostartEnabled;
+        set
+        {
+            if (!CanToggleAutostart)
+            {
+                OnPropertyChanged();
+                return;
+            }
+
+            if (SetProperty(ref _autostartEnabled, value))
+            {
+                _ = SetAutostartEnabledAsync(value);
+            }
+        }
+    }
+
+    public bool CanToggleAutostart => !IsBusy && Autostart?.Status is AutostartStatus.Enabled or AutostartStatus.Disabled;
 
     public ProfileDescriptor? SelectedProfile
     {
@@ -257,13 +288,13 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
-    public async Task ToggleAutostartAsync()
+    private async Task SetAutostartEnabledAsync(bool enabled)
     {
         await RunAsync(async () =>
         {
-            Autostart = Autostart?.IsEnabled == true
-                ? await _services.Autostart.DisableAsync()
-                : await _services.Autostart.EnableAsync();
+            Autostart = enabled
+                ? await _services.Autostart.EnableAsync()
+                : await _services.Autostart.DisableAsync();
             Message = Autostart.Message ?? $"Autostart is {Autostart.Status}.";
         });
     }
@@ -453,8 +484,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      InitializeCommand, StartCommand, StopCommand, SaveCommand,
-                     ActivateProfileCommand, ToggleAutostartCommand, CheckForUpdatesCommand, OpenPermissionsCommand,
-                     OpenHeatmapCommand
+                     ActivateProfileCommand, CheckForUpdatesCommand, OpenPermissionsCommand, OpenHeatmapCommand
                  })
         {
             if (command is AsyncCommand asyncCommand)
