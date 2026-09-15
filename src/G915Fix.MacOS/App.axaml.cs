@@ -22,6 +22,7 @@ public partial class App : Application
     private NativeMenuItem? _filterMouse;
     private NativeMenuItem? _profileAutoSwitch;
     private NativeMenuItem? _trackEvents;
+    private int _shutdownRequested;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -38,6 +39,8 @@ public partial class App : Application
             CreateMenuBarIcon(desktop);
             desktop.Exit += (_, _) =>
             {
+                _tray?.Dispose();
+                _tray = null;
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
@@ -83,12 +86,7 @@ public partial class App : Application
         var settings = new NativeMenuItem("All settings...");
         settings.Click += (_, _) => ShowWindow();
         var quit = new NativeMenuItem("Quit G915 Fix");
-        quit.Click += (_, _) =>
-        {
-            if (_window is not null) _window.AllowClose = true;
-            if (_permissionsWindow is not null) _permissionsWindow.AllowClose = true;
-            desktop.Shutdown();
-        };
+        quit.Click += (_, _) => RequestShutdown(desktop);
 
         var menu = new NativeMenu();
         menu.Items.Add(_filterKeyboard);
@@ -110,6 +108,24 @@ public partial class App : Application
         };
         TrayIcon.SetIcons(this, new TrayIcons { _tray });
         UpdateMenuBarIcon();
+    }
+
+    private void RequestShutdown(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (Interlocked.Exchange(ref _shutdownRequested, 1) != 0)
+        {
+            return;
+        }
+
+        // An NSMenu action is still active while this handler runs. Defer app
+        // teardown until it returns; shutting down from within that action can
+        // leave the macOS menu-bar event loop waiting on itself.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_window is not null) _window.AllowClose = true;
+            if (_permissionsWindow is not null) _permissionsWindow.AllowClose = true;
+            desktop.Shutdown();
+        }, DispatcherPriority.Background);
     }
 
     private static NativeMenuItem CreateToggleMenuItem(string header, bool isChecked, Action<bool> setValue)

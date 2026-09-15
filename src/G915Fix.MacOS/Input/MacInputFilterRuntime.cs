@@ -120,6 +120,10 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
             if (_runLoop != IntPtr.Zero)
             {
                 MacNative.CFRunLoopStop(_runLoop);
+                // CFRunLoopStop alone does not necessarily interrupt a run loop
+                // sleeping for its next input event. Wake it so shutdown cannot
+                // leave the UI waiting for the event-tap thread to exit.
+                MacNative.CFRunLoopWakeUp(_runLoop);
             }
         }
 

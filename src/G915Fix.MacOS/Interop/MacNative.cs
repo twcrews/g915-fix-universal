@@ -111,6 +111,9 @@ internal static class MacNative
     internal static extern void CFRunLoopStop(IntPtr runLoop);
 
     [DllImport(CoreFoundation)]
+    internal static extern void CFRunLoopWakeUp(IntPtr runLoop);
+
+    [DllImport(CoreFoundation)]
     internal static extern void CFRelease(IntPtr cf);
 
     [DllImport(LibSystem)]
