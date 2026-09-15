@@ -9,6 +9,14 @@ internal sealed class MacPermissionService : IPermissionService
     public const string InputMonitoringPermissionId = "macos.input-monitoring";
     private const string AccessibilitySettingsUri = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
     private const string InputMonitoringSettingsUri = "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent";
+    // Constructing a property list lets CoreFoundation create the real CFBoolean
+    // object required by AXIsProcessTrustedWithOptions; a hand-built dictionary
+    // with an invalid boolean reference can crash inside CoreFoundation.
+    private static readonly byte[] AccessibilityPromptOptions = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict><key>AXTrustedCheckOptionPrompt</key><true/></dict></plist>
+        """u8.ToArray();
 
     public Task<IReadOnlyList<PermissionRequirement>> GetRequiredPermissionsAsync(CancellationToken cancellationToken = default)
     {
@@ -99,28 +107,24 @@ internal sealed class MacPermissionService : IPermissionService
 
     private static bool RequestAccessibilityPrompt()
     {
-        IntPtr key = MacNative.CFStringCreateWithCString(IntPtr.Zero, "AXTrustedCheckOptionPrompt", MacNative.Utf8StringEncoding);
-        if (key == IntPtr.Zero)
+        IntPtr data = MacNative.CFDataCreate(IntPtr.Zero, AccessibilityPromptOptions, AccessibilityPromptOptions.Length);
+        if (data == IntPtr.Zero)
         {
             return false;
         }
 
         IntPtr options = IntPtr.Zero;
+        IntPtr error = IntPtr.Zero;
         try
         {
-            options = MacNative.CFDictionaryCreate(
-                IntPtr.Zero,
-                [key],
-                [MacNative.GetBooleanTrue()],
-                1,
-                IntPtr.Zero,
-                IntPtr.Zero);
+            options = MacNative.CFPropertyListCreateWithData(IntPtr.Zero, data, 0, out _, out error);
             return options != IntPtr.Zero && MacNative.AXIsProcessTrustedWithOptions(options);
         }
         finally
         {
+            if (error != IntPtr.Zero) MacNative.CFRelease(error);
             if (options != IntPtr.Zero) MacNative.CFRelease(options);
-            MacNative.CFRelease(key);
+            MacNative.CFRelease(data);
         }
     }
 
