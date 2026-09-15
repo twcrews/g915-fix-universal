@@ -44,6 +44,7 @@ internal static class MacHostFactory
             cacheStore: new FileGameListCacheStore(gameListPath + ".cache.json"));
         var services = new DesktopApplicationServices(
             runtime, profiles, permissions, autostart, updates,
+            notifications: new AvaloniaAlertNotificationService(),
             heatmapReports: heatmaps,
             gameListUpdater: gameListUpdater);
         var viewModel = new DesktopMainViewModel(

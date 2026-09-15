@@ -4,6 +4,7 @@ using G915Fix.Core.Autostart;
 using G915Fix.Core.Configuration;
 using G915Fix.Core.Input;
 using G915Fix.Core.Games;
+using G915Fix.Core.Notifications;
 using G915Fix.Core.Heatmap;
 using G915Fix.Core.Profiles;
 using G915Fix.Core.Updates;
@@ -340,9 +341,21 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             GameListUpdateResult result = await _services.GameListUpdater.UpdateAsync();
-            Message = result.Message ?? (result.Status == GameListUpdateStatus.Updated
-                ? $"Game list updated with {result.GameCount} games."
-                : "The game list is already current.");
+            string message = result.Message ?? result.Status switch
+            {
+                GameListUpdateStatus.Updated => $"Game list updated with {result.GameCount} games.",
+                GameListUpdateStatus.UpToDate => "The game list is already current.",
+                _ => "The game list could not be updated."
+            };
+            Message = message;
+
+            if (_services.Notifications is not null)
+            {
+                await _services.Notifications.ShowAsync(new UserNotification(
+                    result.Status == GameListUpdateStatus.Failed ? "Game list update failed" : "Game list update complete",
+                    message,
+                    result.Status == GameListUpdateStatus.Failed ? NotificationSeverity.Error : NotificationSeverity.Info));
+            }
         });
     }
 

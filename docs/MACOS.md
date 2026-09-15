@@ -66,7 +66,8 @@ It opens an empty report when no diagnostics have been recorded yet; enable
 Diagnostics before filtering to populate it. The menu-bar menu also provides
 **Filter keyboard**, **Filter mouse**, **Profile auto-switch**, **Track events**,
 **Update games list...**, and **Event heatmap...** for the corresponding common
-settings and actions; use **All settings...** for the complete settings window.
+settings and actions. Updating the game list shows a dismissible alert when the
+refresh completes or fails; use **All settings...** for the complete settings window.
 
 Closing the settings window hides it and leaves the menu-bar app running. Use
 **Quit G915 Fix** from the menu-bar menu to stop the runtime and exit. The
