@@ -59,7 +59,7 @@
         <StackPanel Spacing="10">
           <TextBlock Text="Tracking" Classes="section-title" />
           <ToggleSwitch Content="Track filtering" IsChecked="{Binding DiagnosticsEnabled}" IsEnabled="{Binding CanToggleDiagnostics}" />
-          <Button Content="Open diagnostic heatmap" Command="{Binding OpenHeatmapCommand}" />
+          <Button Content="Open heatmap" Command="{Binding OpenHeatmapCommand}" />
         </StackPanel>
       </Border>
 
