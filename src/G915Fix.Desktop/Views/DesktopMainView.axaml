@@ -23,13 +23,13 @@
             <ToggleSwitch Content="Enable keyboard filtering" IsChecked="{Binding KeyboardEnabled}" IsEnabled="{Binding CanToggleInputFiltering}" />
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
               <TextBlock Text="Mode" VerticalAlignment="Center" />
-              <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <ComboBox ItemsSource="{Binding KeyboardModes}" SelectedItem="{Binding KeyboardMode}" />
-                <Border Grid.Column="1" Classes="mode-help" VerticalAlignment="Center"
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <ComboBox Width="180" ItemsSource="{Binding KeyboardModes}" SelectedItem="{Binding KeyboardMode}" />
+                <Border Classes="mode-help" VerticalAlignment="Center"
                         ToolTip.Tip="BlockRepress blocks a repeat key press that occurs within the interval, along with its matching release.&#x0A;&#x0A;BlockRelease holds each key release for the interval; a repeat press during that time cancels the release.">
                   <TextBlock Text="?" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-              </Grid>
+              </StackPanel>
               <TextBlock Grid.Row="1" Text="Minimum repeat interval (ms)" VerticalAlignment="Center" />
               <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding KeyboardMinimumRepeatIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
