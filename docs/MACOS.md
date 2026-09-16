@@ -55,7 +55,8 @@ permission.
 2. Click **Open Settings**. macOS displays the Accessibility consent prompt when
    it can. If the prompt was previously rejected or is unavailable, click the
    button again to open Privacy & Security > Accessibility.
-3. Allow G915 Fix, then return to the app. Quit and reopen it if macOS asks.
+3. Allow G915 Fix, then return to the app. It rechecks Accessibility permission
+   when its settings window regains focus; quit and reopen only if macOS asks.
    Enable either **Enable keyboard filtering** or **Enable mouse filtering** to
    start filtering automatically.
 4. Confirm the status reads **Active** before testing a keyboard or mouse.

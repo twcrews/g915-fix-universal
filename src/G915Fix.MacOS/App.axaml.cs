@@ -34,6 +34,7 @@ public partial class App : Application
             // window to the desktop lifetime, which would show it at launch.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _window = new MainWindow { DataContext = _host.ViewModel };
+            _window.Activated += OnSettingsWindowActivated;
             CreateMenuBarIcon(desktop);
             desktop.Exit += (_, _) =>
             {
@@ -42,6 +43,7 @@ public partial class App : Application
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                    if (_window is not null) _window.Activated -= OnSettingsWindowActivated;
                     _host.Dispose();
                 }
             };
@@ -174,6 +176,17 @@ public partial class App : Application
             case nameof(DesktopMainViewModel.DiagnosticsEnabled):
                 _trackEvents?.IsChecked = _host.ViewModel.DiagnosticsEnabled;
                 break;
+        }
+    }
+
+    private async void OnSettingsWindowActivated(object? sender, EventArgs e)
+    {
+        // macOS does not notify this process when a TCC setting changes. Recheck
+        // whenever the settings window regains focus after the user returns from
+        // the Accessibility pane or its consent prompt.
+        if (_host is not null)
+        {
+            await _host.ViewModel.RefreshInputFilteringPermissionsAsync();
         }
     }
 
