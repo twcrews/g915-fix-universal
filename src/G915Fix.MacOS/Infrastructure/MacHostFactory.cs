@@ -48,7 +48,8 @@ internal static class MacHostFactory
             runtime, profiles, permissions, autostart, updates,
             notifications: new AvaloniaAlertNotificationService(),
             heatmapReports: heatmaps,
-            gameListUpdater: gameListUpdater);
+            gameListUpdater: gameListUpdater,
+            profilesDirectory: new MacProfilesDirectoryService(configDirectory));
         var viewModel = new DesktopMainViewModel(
             services,
             new DesktopHostOptions(GetVersion(), "G915 Fix"));

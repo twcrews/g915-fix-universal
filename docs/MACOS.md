@@ -64,8 +64,9 @@ permission.
 The app stores `config.json` and JSON profiles in
 `~/Library/Application Support/G915Fix/`, and diagnostic JSON Lines events in
 `~/Library/Logs/G915Fix/filter-diagnostics.jsonl` when diagnostics are enabled.
-Use **Open diagnostic heatmap** in the Application section to generate a
-self-contained HTML file alongside the log and open it in the default browser.
+Use **Open diagnostic heatmap** in the Tracking section to generate a
+self-contained HTML file alongside the log and open it in the default browser. Use
+**Browse…** in Profiles to open the profile directory in Finder.
 It opens an empty report when no diagnostics have been recorded yet. When
 **Track events** is disabled, the report displays a warning that it will not be
 updated; enable it before filtering to populate the heatmap. The menu-bar menu also provides

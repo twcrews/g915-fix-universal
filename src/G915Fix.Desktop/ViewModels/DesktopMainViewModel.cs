@@ -55,6 +55,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
         OpenSettingsCommand = new AsyncCommand(OpenSettingsAsync);
         OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
+        OpenProfilesDirectoryCommand = new AsyncCommand(OpenProfilesDirectoryAsync, () => !IsBusy && _services.ProfilesDirectory is not null);
         UpdateGamesListCommand = new AsyncCommand(UpdateGamesListAsync, () => !IsBusy && _services.GameListUpdater is not null);
 
         _services.InputRuntime.StatusChanged += OnRuntimeStatusChanged;
@@ -70,6 +71,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     public ICommand CheckForUpdatesCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand OpenHeatmapCommand { get; }
+    public ICommand OpenProfilesDirectoryCommand { get; }
     public ICommand UpdateGamesListCommand { get; }
 
     public bool IsInitialized
@@ -267,7 +269,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
             await RefreshInputFilteringPermissionAsyncCore();
             await ApplyFilterConfigurationAsync();
-            Message = activation.Message ?? Runtime.Message ?? "Configuration loaded.";
+            Message = activation.Message ?? Runtime.Message;
         });
     }
 
@@ -331,6 +333,20 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         {
             HeatmapGenerationResult result = await _services.HeatmapReports.GenerateAndOpenAsync();
             Message = result.Message ?? (result.Succeeded ? "Heatmap opened." : "Could not generate the heatmap.");
+        });
+    }
+
+    public async Task OpenProfilesDirectoryAsync()
+    {
+        if (_services.ProfilesDirectory is null)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            ProfilesDirectoryOpenResult result = await _services.ProfilesDirectory.OpenAsync();
+            Message = result.Message ?? (result.Succeeded ? "Profiles directory opened." : "Could not open the profiles directory.");
         });
     }
 
@@ -593,7 +609,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         foreach (ICommand command in new[]
                  {
                      ActivateProfileCommand, CheckForUpdatesCommand, OpenSettingsCommand, OpenHeatmapCommand,
-                     UpdateGamesListCommand
+                     OpenProfilesDirectoryCommand, UpdateGamesListCommand
                  })
         {
             if (command is AsyncCommand asyncCommand)

@@ -23,7 +23,8 @@ public sealed class DesktopApplicationServices
         IUpdateChecker? updateChecker = null,
         IUserNotificationService? notifications = null,
         IHeatmapReportService? heatmapReports = null,
-        IGameListUpdater? gameListUpdater = null)
+        IGameListUpdater? gameListUpdater = null,
+        IProfilesDirectoryService? profilesDirectory = null)
     {
         InputRuntime = inputRuntime ?? throw new ArgumentNullException(nameof(inputRuntime));
         Profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
@@ -33,6 +34,7 @@ public sealed class DesktopApplicationServices
         Notifications = notifications;
         HeatmapReports = heatmapReports;
         GameListUpdater = gameListUpdater;
+        ProfilesDirectory = profilesDirectory;
     }
 
     public IInputFilterRuntime InputRuntime { get; }
@@ -43,7 +45,17 @@ public sealed class DesktopApplicationServices
     public IUserNotificationService? Notifications { get; }
     public IHeatmapReportService? HeatmapReports { get; }
     public IGameListUpdater? GameListUpdater { get; }
+    public IProfilesDirectoryService? ProfilesDirectory { get; }
 }
+
+/// <summary>Opens the host-managed directory containing application profiles.</summary>
+public interface IProfilesDirectoryService
+{
+    Task<ProfilesDirectoryOpenResult> OpenAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>Result of asking the host to reveal the profiles directory.</summary>
+public sealed record ProfilesDirectoryOpenResult(bool Succeeded, string? Message = null);
 
 /// <summary>Host-specific presentation values that do not belong in Core configuration.</summary>
 public sealed class DesktopHostOptions
