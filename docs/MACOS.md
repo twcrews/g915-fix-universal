@@ -1,8 +1,8 @@
 # macOS local testing
 
 `G915Fix.MacOS` is an unsigned, non-sandboxed Avalonia menu-bar application for
-macOS 13 (Ventura) or later. It starts as a menu-bar utility, but automatically
-opens its settings window when Accessibility permission is needed. Otherwise, open
+macOS 13 (Ventura) or later. It starts as a menu-bar utility and does not show a
+Dock icon while running; use its menu-bar icon instead. It automatically opens its settings window when Accessibility permission is needed. Otherwise, open
 it manually with **All settings...** from its menu. It uses a CoreGraphics event
 tap to suppress input, so it cannot filter while macOS Secure Input is active (for
 example, many password fields). It does not currently implement automatic

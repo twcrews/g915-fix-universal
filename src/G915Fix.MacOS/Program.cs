@@ -19,6 +19,9 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
+            // This is a resident menu-bar utility. Its settings window is
+            // optional, so the running app belongs in the menu bar, not Dock.
+            .With(new MacOSPlatformOptions { ShowInDock = false })
             .UsePlatformDetect()
             .LogToTrace();
 }
