@@ -21,6 +21,8 @@ public partial class App : Application
     private NativeMenuItem? _filterMouse;
     private NativeMenuItem? _profileAutoSwitch;
     private NativeMenuItem? _trackEvents;
+    private readonly DispatcherTimer _permissionRefreshTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _permissionRefreshInProgress;
     private int _shutdownRequested;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -35,11 +37,14 @@ public partial class App : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _window = new MainWindow { DataContext = _host.ViewModel };
             _window.Activated += OnSettingsWindowActivated;
+            _permissionRefreshTimer.Tick += OnPermissionRefreshTimerTick;
             CreateMenuBarIcon(desktop);
             desktop.Exit += (_, _) =>
             {
                 _tray?.Dispose();
                 _tray = null;
+                _permissionRefreshTimer.Stop();
+                _permissionRefreshTimer.Tick -= OnPermissionRefreshTimerTick;
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
@@ -55,6 +60,7 @@ public partial class App : Application
                 {
                     ShowWindow();
                 }
+                UpdatePermissionPolling();
             });
         }
 
@@ -157,6 +163,9 @@ public partial class App : Application
 
         switch (e.PropertyName)
         {
+            case nameof(DesktopMainViewModel.HasMissingPermissions):
+                UpdatePermissionPolling();
+                break;
             case nameof(DesktopMainViewModel.CanToggleInputFiltering):
                 if (_filterKeyboard is not null) _filterKeyboard.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
                 if (_filterMouse is not null) _filterMouse.IsEnabled = _host.ViewModel.CanToggleInputFiltering;
@@ -183,10 +192,44 @@ public partial class App : Application
     {
         // macOS does not notify this process when a TCC setting changes. Recheck
         // whenever the settings window regains focus after the user returns from
-        // the Accessibility pane or its consent prompt.
+        // the Accessibility pane or its consent prompt; the timer covers cases
+        // where the window stays hidden.
         if (_host is not null)
         {
             await _host.ViewModel.RefreshInputFilteringPermissionsAsync();
+            UpdatePermissionPolling();
+        }
+    }
+
+    private async void OnPermissionRefreshTimerTick(object? sender, EventArgs e)
+    {
+        if (_permissionRefreshInProgress || _host is null || !_host.ViewModel.HasMissingPermissions)
+        {
+            UpdatePermissionPolling();
+            return;
+        }
+
+        _permissionRefreshInProgress = true;
+        try
+        {
+            await _host.ViewModel.RefreshInputFilteringPermissionsAsync();
+        }
+        finally
+        {
+            _permissionRefreshInProgress = false;
+            UpdatePermissionPolling();
+        }
+    }
+
+    private void UpdatePermissionPolling()
+    {
+        if (_host?.ViewModel.HasMissingPermissions == true)
+        {
+            _permissionRefreshTimer.Start();
+        }
+        else
+        {
+            _permissionRefreshTimer.Stop();
         }
     }
 
@@ -200,6 +243,7 @@ public partial class App : Application
         _window.Show();
         _window.WindowState = WindowState.Normal;
         _window.Activate();
+        UpdatePermissionPolling();
     }
 
     private void UpdateMenuBarIcon()
