@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -19,6 +20,7 @@ public partial class App : Application
     private TrayIcon? _tray;
     private NativeMenuItem? _filterKeyboard;
     private NativeMenuItem? _filterMouse;
+    private NativeMenu? _profileMenu;
     private NativeMenuItem? _profileAutoSwitch;
     private NativeMenuItem? _trackEvents;
     private readonly DispatcherTimer _permissionRefreshTimer = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -55,6 +57,7 @@ public partial class App : Application
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                    _host.ViewModel.Profiles.CollectionChanged -= OnProfilesCollectionChanged;
                     if (_window is not null) _window.Activated -= OnSettingsWindowActivated;
                     _host.Dispose();
                 }
@@ -84,12 +87,16 @@ public partial class App : Application
             isEnabled => viewModel.MouseEnabled = isEnabled);
         _filterKeyboard.IsEnabled = viewModel.CanToggleInputFiltering;
         _filterMouse.IsEnabled = viewModel.CanToggleInputFiltering;
+        _profileMenu = new NativeMenu();
+        var profile = new NativeMenuItem("Profile") { Menu = _profileMenu };
+        RefreshProfileMenu();
         _profileAutoSwitch = CreateToggleMenuItem("Profile auto-switch", viewModel.AutoSwitchProfiles,
             isEnabled => viewModel.AutoSwitchProfiles = isEnabled);
         _trackEvents = CreateToggleMenuItem("Track events", viewModel.DiagnosticsEnabled,
             isEnabled => viewModel.DiagnosticsEnabled = isEnabled);
         _trackEvents.IsEnabled = viewModel.CanToggleDiagnostics;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.Profiles.CollectionChanged += OnProfilesCollectionChanged;
 
         var updateGames = new NativeMenuItem("Update games list...")
         {
@@ -108,6 +115,7 @@ public partial class App : Application
         menu.Items.Add(_filterKeyboard);
         menu.Items.Add(_filterMouse);
         menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(profile);
         menu.Items.Add(_profileAutoSwitch);
         menu.Items.Add(updateGames);
         menu.Items.Add(new NativeMenuItemSeparator());
@@ -186,12 +194,37 @@ public partial class App : Application
             case nameof(DesktopMainViewModel.MouseEnabled):
                 _filterMouse?.IsChecked = _host.ViewModel.MouseEnabled;
                 break;
+            case nameof(DesktopMainViewModel.SelectedProfile):
+                RefreshProfileMenu();
+                break;
             case nameof(DesktopMainViewModel.AutoSwitchProfiles):
                 _profileAutoSwitch?.IsChecked = _host.ViewModel.AutoSwitchProfiles;
                 break;
             case nameof(DesktopMainViewModel.DiagnosticsEnabled):
                 _trackEvents?.IsChecked = _host.ViewModel.DiagnosticsEnabled;
                 break;
+        }
+    }
+
+    private void OnProfilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshProfileMenu();
+
+    private void RefreshProfileMenu()
+    {
+        if (_profileMenu is null || _host is null)
+        {
+            return;
+        }
+
+        _profileMenu.Items.Clear();
+        foreach (var profile in _host.ViewModel.Profiles)
+        {
+            var item = new NativeMenuItem(profile.Name)
+            {
+                ToggleType = NativeMenuItemToggleType.Radio,
+                IsChecked = profile == _host.ViewModel.SelectedProfile
+            };
+            item.Click += (_, _) => _host.ViewModel.SelectedProfile = profile;
+            _profileMenu.Items.Add(item);
         }
     }
 
