@@ -25,6 +25,13 @@ public partial class App : Application
     private bool _permissionRefreshInProgress;
     private int _shutdownRequested;
 
+    public App()
+    {
+        // Avalonia otherwise supplies "Avalonia Application" as the native
+        // application-menu title when it initializes the macOS backend.
+        Name = "G915 Fix";
+    }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
