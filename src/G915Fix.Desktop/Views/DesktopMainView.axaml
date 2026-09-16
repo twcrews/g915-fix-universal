@@ -11,10 +11,9 @@
         </Grid>
       </Border>
 
-      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+      <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="{Binding ApplicationName}" Classes="title" />
         <TextBlock Grid.Column="1" Text="{Binding VersionText, StringFormat=Version {0}}" VerticalAlignment="Center" />
-        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Runtime.Status, StringFormat=Input filtering: {0}}" Classes="status" />
       </Grid>
 
       <Border Classes="card">
