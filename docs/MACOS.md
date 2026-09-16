@@ -1,8 +1,9 @@
 # macOS local testing
 
 `G915Fix.MacOS` is an unsigned, non-sandboxed Avalonia menu-bar application for
-macOS 13 (Ventura) or later. It starts as a menu-bar utility; open the settings
-window manually with **All settings...** from its menu. It uses a CoreGraphics event
+macOS 13 (Ventura) or later. It starts as a menu-bar utility, but automatically
+opens its settings window when Accessibility permission is needed. Otherwise, open
+it manually with **All settings...** from its menu. It uses a CoreGraphics event
 tap to suppress input, so it cannot filter while macOS Secure Input is active (for
 example, many password fields). It does not currently implement automatic
 game-profile switching.
@@ -48,8 +49,9 @@ G915 Fix uses a suppressing CoreGraphics event tap, which requires
 **Accessibility** permission. It does not require a separate **Input Monitoring**
 permission.
 
-1. Open **All settings...** from the menu-bar menu. If Accessibility is not
-   allowed, the settings window displays a warning banner.
+1. If Accessibility is not allowed at launch, the settings window opens and
+   displays a warning banner. It remains available through **All settings...**
+   in the menu-bar menu.
 2. Click **Open Settings**. macOS displays the Accessibility consent prompt when
    it can. If the prompt was previously rejected or is unavailable, click the
    button again to open Privacy & Security > Accessibility.

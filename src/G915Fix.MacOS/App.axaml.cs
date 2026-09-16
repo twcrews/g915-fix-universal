@@ -46,7 +46,14 @@ public partial class App : Application
                 }
             };
             ActualThemeVariantChanged += (_, _) => UpdateMenuBarIcon();
-            Dispatcher.UIThread.Post(() => _ = _host.ViewModel.LoadAsync());
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await _host.ViewModel.LoadAsync();
+                if (_host.ViewModel.HasMissingPermissions)
+                {
+                    ShowWindow();
+                }
+            });
         }
 
         base.OnFrameworkInitializationCompleted();
