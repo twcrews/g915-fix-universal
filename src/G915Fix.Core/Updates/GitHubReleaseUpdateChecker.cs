@@ -62,6 +62,13 @@ public sealed class GitHubReleaseUpdateChecker : IUpdateChecker
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token).ConfigureAwait(false);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // GitHub returns 404 from /releases/latest when a repository has no
+                // published releases (including when it has version tags).
+                return Failed("No GitHub Release has been published for this project yet.");
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 return Failed($"The update service returned HTTP {(int)response.StatusCode}.");

@@ -50,7 +50,19 @@ public sealed class UpdateCheckerTests
     }
 
     [TestMethod]
-    public async Task CheckAsync_ReturnsFailedForHttpErrors()
+    public async Task CheckAsync_ExplainsWhenTheRepositoryHasNoPublishedReleases()
+    {
+        using var client = new HttpClient(new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound)));
+        var checker = new GitHubReleaseUpdateChecker(client);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(1, 0));
+
+        Assert.AreEqual(UpdateCheckStatus.Failed, result.Status);
+        Assert.AreEqual("No GitHub Release has been published for this project yet.", result.Message);
+    }
+
+    [TestMethod]
+    public async Task CheckAsync_ReturnsFailedForOtherHttpErrors()
     {
         using var client = new HttpClient(new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)));
         var checker = new GitHubReleaseUpdateChecker(client);
