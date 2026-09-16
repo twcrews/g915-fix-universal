@@ -70,14 +70,6 @@ internal static class MacNative
     [return: MarshalAs(UnmanagedType.I1)]
     internal static extern bool AXIsProcessTrustedWithOptions(IntPtr options);
 
-    [DllImport(ApplicationServices)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    internal static extern bool CGPreflightListenEventAccess();
-
-    [DllImport(ApplicationServices)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    internal static extern bool CGRequestListenEventAccess();
-
     [DllImport(CoreFoundation)]
     internal static extern IntPtr CFMachPortCreateRunLoopSource(IntPtr allocator, IntPtr port, nint order);
 

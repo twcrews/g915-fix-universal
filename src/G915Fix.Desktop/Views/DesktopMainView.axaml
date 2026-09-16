@@ -5,8 +5,9 @@
     <StackPanel Margin="24" Spacing="16" MaxWidth="760">
       <Border Classes="permission-warning" IsVisible="{Binding HasMissingPermissions}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-          <TextBlock Text="{Binding MissingPermissionsMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Content="Open Permissions" Command="{Binding OpenPermissionsCommand}" />
+          <TextBlock Text="Additional permissions are needed for the app to work correctly."
+                     TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Open Settings" Command="{Binding OpenSettingsCommand}" />
         </Grid>
       </Border>
 

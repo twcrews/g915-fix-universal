@@ -42,19 +42,20 @@ asset directly with `actool`; it does not construct an icon from the asset's
 individual files. The menu-bar icon uses `res/app-icon-black.png` in light
 appearance and `res/app-icon-white.png` in dark appearance.
 
-## Grant input permissions
+## Grant Accessibility permission
 
-1. On launch, **Permissions Required** opens automatically until both
-   **Accessibility** and **Input Monitoring** are allowed. It is also available
-   at any time from **All settings...** in the menu-bar menu, then the main
-   window's **Open permissions** button.
-2. Click each permission button marked **Not allowed**. macOS displays its
-   consent prompt when it can. If a prompt was previously rejected or does not
-   appear, click that permission again to open the matching Privacy & Security
-   pane as a fallback.
-3. Return to the window and verify both buttons read **Allowed**. Quit and reopen
-   the app if macOS asks for it. Enable either **Enable keyboard filtering** or
-   **Enable mouse filtering** to start filtering automatically.
+G915 Fix uses a suppressing CoreGraphics event tap, which requires
+**Accessibility** permission. It does not require a separate **Input Monitoring**
+permission.
+
+1. Open **All settings...** from the menu-bar menu. If Accessibility is not
+   allowed, the settings window displays a warning banner.
+2. Click **Open Settings**. macOS displays the Accessibility consent prompt when
+   it can. If the prompt was previously rejected or is unavailable, click the
+   button again to open Privacy & Security > Accessibility.
+3. Allow G915 Fix, then return to the app. Quit and reopen it if macOS asks.
+   Enable either **Enable keyboard filtering** or **Enable mouse filtering** to
+   start filtering automatically.
 4. Confirm the status reads **Active** before testing a keyboard or mouse.
 
 The app stores `config.json` and JSON profiles in
@@ -83,8 +84,8 @@ at the next login and does not relaunch the app in the current session.
   and optional left/right/middle/X1/X2 mouse debounce.
 - Test both `BlockRepress` and `BlockRelease`; changing a configuration while a
   key is held must not create a delayed key-up afterward.
-- Revoke either TCC permission, enable keyboard or mouse filtering, and verify the
-  app reports `PermissionRequired` rather than claiming the filter is active.
+- Revoke Accessibility permission, enable keyboard or mouse filtering, and verify
+  the app reports `PermissionRequired` rather than claiming the filter is active.
 - Enable autostart and verify the running app is not relaunched; after signing out
   and back in, verify exactly one G915 Fix instance starts.
 - Test a password field and confirm the app fails open rather than blocking input.

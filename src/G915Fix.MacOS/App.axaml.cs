@@ -16,7 +16,6 @@ public partial class App : Application
 {
     private MacHost? _host;
     private MainWindow? _window;
-    private PermissionsWindow? _permissionsWindow;
     private TrayIcon? _tray;
     private NativeMenuItem? _filterKeyboard;
     private NativeMenuItem? _filterMouse;
@@ -31,8 +30,6 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _host = MacHostFactory.Create();
-            _host.ViewModel.PermissionsWindowRequested += OnPermissionsWindowRequested;
-            _host.PermissionsViewModel.PermissionsRefreshed += OnPermissionsRefreshed;
             // This resident app starts from the menu bar. Do not assign a main
             // window to the desktop lifetime, which would show it at launch.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -45,19 +42,11 @@ public partial class App : Application
                 if (_host is not null)
                 {
                     _host.ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
-                    _host.PermissionsViewModel.PermissionsRefreshed -= OnPermissionsRefreshed;
                     _host.Dispose();
                 }
             };
             ActualThemeVariantChanged += (_, _) => UpdateMenuBarIcon();
-            Dispatcher.UIThread.Post(async () =>
-            {
-                await _host.ViewModel.LoadAsync();
-                if (await _host.PermissionsViewModel.RefreshAsync())
-                {
-                    ShowPermissionsWindow();
-                }
-            });
+            Dispatcher.UIThread.Post(() => _ = _host.ViewModel.LoadAsync());
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -128,7 +117,6 @@ public partial class App : Application
         Dispatcher.UIThread.Post(() =>
         {
             if (_window is not null) _window.AllowClose = true;
-            if (_permissionsWindow is not null) _permissionsWindow.AllowClose = true;
             desktop.Shutdown();
         }, DispatcherPriority.Background);
     }
@@ -192,29 +180,6 @@ public partial class App : Application
         _window.Show();
         _window.WindowState = WindowState.Normal;
         _window.Activate();
-    }
-
-    private void OnPermissionsWindowRequested(object? sender, EventArgs e) => ShowPermissionsWindow();
-
-    private async void OnPermissionsRefreshed(object? sender, EventArgs e)
-    {
-        if (_host is not null)
-        {
-            await _host.ViewModel.RefreshInputFilteringPermissionsAsync();
-        }
-    }
-
-    private void ShowPermissionsWindow()
-    {
-        if (_host is null)
-        {
-            return;
-        }
-
-        _permissionsWindow ??= new PermissionsWindow(_host.PermissionsViewModel);
-        _permissionsWindow.Show();
-        _permissionsWindow.WindowState = WindowState.Normal;
-        _permissionsWindow.Activate();
     }
 
     private void UpdateMenuBarIcon()

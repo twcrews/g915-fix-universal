@@ -39,7 +39,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _canToggleInputFiltering;
     private bool _hasMissingPermissions;
-    private string? _missingPermissionsMessage;
 
     public DesktopMainViewModel(
         DesktopApplicationServices services,
@@ -54,7 +53,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
         ActivateProfileCommand = new AsyncCommand(ActivateSelectedProfileAsync, () => !IsBusy && SelectedProfile is not null);
         CheckForUpdatesCommand = new AsyncCommand(CheckForUpdatesAsync, () => !IsBusy && _services.UpdateChecker is not null);
-        OpenPermissionsCommand = new AsyncCommand(OpenPermissionsAsync);
+        OpenSettingsCommand = new AsyncCommand(OpenSettingsAsync);
         OpenHeatmapCommand = new AsyncCommand(OpenHeatmapAsync, () => !IsBusy && _services.HeatmapReports is not null);
         UpdateGamesListCommand = new AsyncCommand(UpdateGamesListAsync, () => !IsBusy && _services.GameListUpdater is not null);
 
@@ -69,12 +68,9 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
 
     public ICommand ActivateProfileCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
-    public ICommand OpenPermissionsCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
     public ICommand OpenHeatmapCommand { get; }
     public ICommand UpdateGamesListCommand { get; }
-
-    /// <summary>Raised when the host should show its platform-specific permissions UI.</summary>
-    public event EventHandler? PermissionsWindowRequested;
 
     public bool IsInitialized
     {
@@ -165,13 +161,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     {
         get => _hasMissingPermissions;
         private set => SetProperty(ref _hasMissingPermissions, value);
-    }
-
-    /// <summary>Describes the permissions that must be granted before filtering can run.</summary>
-    public string? MissingPermissionsMessage
-    {
-        get => _missingPermissionsMessage;
-        private set => SetProperty(ref _missingPermissionsMessage, value);
     }
 
     /// <summary>Whether platform permission currently allows diagnostic input capture.</summary>
@@ -373,11 +362,21 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
         });
     }
 
-    public Task OpenPermissionsAsync()
-    {
-        PermissionsWindowRequested?.Invoke(this, EventArgs.Empty);
-        return Task.CompletedTask;
-    }
+    /// <summary>Requests the first outstanding platform permission.</summary>
+    public Task OpenSettingsAsync() =>
+        RunAsync(async () =>
+        {
+            PermissionRequirement? missingPermission = (await _services.Permissions.GetRequiredPermissionsAsync())
+                .FirstOrDefault(requirement => requirement.Status is not (PermissionStatus.Granted or PermissionStatus.NotRequired));
+            if (missingPermission is null)
+            {
+                return;
+            }
+
+            PermissionRequestResult result = await _services.Permissions.RequestPermissionAsync(missingPermission.Id);
+            await RefreshInputFilteringPermissionAsyncCore();
+            Message = result.Message ?? missingPermission.Message ?? "Additional permission is required to filter input.";
+        });
 
     /// <summary>
     /// Rechecks the platform consent requirements. Missing consent turns filtering
@@ -412,12 +411,6 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
             .Where(requirement => requirement.Status is not (PermissionStatus.Granted or PermissionStatus.NotRequired))
             .ToArray();
         HasMissingPermissions = missingPermissions.Length > 0;
-        MissingPermissionsMessage = missingPermissions.Length switch
-        {
-            0 => null,
-            1 => $"{missingPermissions[0].DisplayName} permission is required. Open Permissions to grant it.",
-            _ => $"Required permissions are missing: {string.Join(", ", missingPermissions.Select(permission => permission.DisplayName))}. Open Permissions to grant them."
-        };
         CanToggleInputFiltering = !HasMissingPermissions;
         OnPropertyChanged(nameof(CanToggleDiagnostics));
         if (CanToggleInputFiltering)
@@ -599,7 +592,7 @@ public sealed class DesktopMainViewModel : ObservableObject, IDisposable
     {
         foreach (ICommand command in new[]
                  {
-                     ActivateProfileCommand, CheckForUpdatesCommand, OpenPermissionsCommand, OpenHeatmapCommand,
+                     ActivateProfileCommand, CheckForUpdatesCommand, OpenSettingsCommand, OpenHeatmapCommand,
                      UpdateGamesListCommand
                  })
         {

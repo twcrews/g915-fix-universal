@@ -56,7 +56,7 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
         {
             return Publish(new InputFilterRuntimeSnapshot(
                 InputFilterRuntimeStatus.PermissionRequired,
-                Message: "Allow Accessibility and Input Monitoring access in System Settings before starting filtering."));
+                Message: "Allow Accessibility access in System Settings before starting filtering."));
         }
 
         lock (_sync)
@@ -227,7 +227,7 @@ internal sealed class MacInputFilterRuntime : IInputFilterRuntime, IKeyboardInpu
                 IntPtr.Zero);
             if (tap == IntPtr.Zero)
             {
-                throw new UnauthorizedAccessException("CoreGraphics rejected the event tap. Check Accessibility and Input Monitoring permissions.");
+                throw new UnauthorizedAccessException("CoreGraphics rejected the event tap. Check Accessibility permission.");
             }
 
             runLoop = MacNative.CFRunLoopGetCurrent();
